@@ -1,0 +1,96 @@
+---
+title: "EDAV Final Project"
+subtitle: "Friends TV show analysis"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+library(rvest)
+library(robotstxt)
+library(tidyverse)
+```
+
+## Getting the data
+We two different data sets:
+
+* Chapter ratings from IMBD website
+* Dialogues from https://fangj.github.io/friends/, 
+
+IMBD dataset we already have.
+
+To get Dialogues data we will use **rvest** package for web scraping.
+
+First we check if we are allowed to extract data from that website.
+
+```{r}
+url <- "https://fangj.github.io/friends/"
+paths_allowed(url)
+```
+
+```{r}
+html <- read_html(url)
+episodes_list <- html %>% html_nodes("li")  %>% html_nodes("a")
+link <- episodes_list %>% html_attr("href")
+long_name <- episodes_list %>% html_text
+df <- data.frame(long_name,link) %>%
+  mutate(numbers = str_extract(long_name,"(\\d+-\\d+)|\\d+") ) %>%
+  mutate(season=ifelse(str_length(str_match(numbers,"\\d+"))==3, substr(numbers,0,1),substr(numbers,0,2) ) ) %>%
+  mutate(number=str_replace(str_replace(numbers,season,""), paste("-",season,sep = "")  ,"-") ) %>%
+  mutate(name = trimws(str_replace(long_name,"(\\d+-\\d+)|\\d+","")) )%>%
+  mutate(link = paste(url,link,sep="")) %>%
+  mutate(id=paste(season,":",number))
+
+df <- df[colnames(df)!="numbers"]
+```
+
+```{r}
+read_dialogues <- function(link,ep_id) {
+  html <- read_html(link)
+  
+  if(length(html %>% html_nodes("p,font p"))<10){
+        return(NULL)
+  }else{
+      rows <- html %>% html_nodes("p,font p") %>% html_text()  
+  }
+  
+  df2 <- data.frame(rows) %>%
+    mutate(rows2= trimws(str_replace(rows,"\\(([^\\)]+)\\)","") )) %>%
+    mutate(is_scene = ifelse(substr(rows2,0,1)=="[",1,0))
+  df2$split <- str_locate(df2[,"rows"],  "\\w+:|\\w+.\\w+:|\\w+.\\s\\w+:" )[,2]
+ 
+  df2 <- df2 %>%
+    mutate(character=trimws(substr(rows2,0,split - 1))) %>%
+    mutate(line=trimws(substr(rows2,split + 1,1000000))) %>%
+    mutate(episode_id = ep_id) %>%
+    mutate(line=trimws(str_remove(line,"\\(([^\\)]+)\\)")) ) %>%
+    filter(character != "Written by")
+  df2$ID <- seq.int(nrow(df2)) 
+  
+  df3 <- data.frame(df2, scene=cumsum(df2$is_scene))
+  
+  df3 <- df3 %>%
+    filter(rows2!="",!is_scene,!is.na(character))
+  df3$line_num <- seq.int(nrow(df3))
+  df3<- df3 %>%
+    dplyr::select(c("episode_id","line_num","scene",'character','line'))
+  
+  return(df3)
+}
+
+df2<-read_dialogues(df[1,"link"],df[1,"id"])
+```
+
+```{r}
+dialogues <- data.frame()
+for (i in 1:nrow(df)) {
+  n <- read_dialogues(df[i,"link"],df[i,"id"])
+  print(nrow(n))
+  dialogues <- rbind(dialogues, n)
+
+}
+```
+
+
