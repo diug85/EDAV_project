@@ -49,48 +49,109 @@ df <- df[colnames(df)!="numbers"]
 ```{r}
 read_dialogues <- function(link,ep_id) {
   html <- read_html(link)
-  
-  if(length(html %>% html_nodes("p,font p"))<10){
-        return(NULL)
+  #### Special case for episode 9 : 15
+  if (ep_id == "9 : 15"){
+    df_1 <- read.csv("episode_9_15.csv")
+    df_2 <- df_1 %>%
+      mutate(rows2= trimws(str_replace(rows,"\\(([^\\)]+)\\)","") )) %>%
+      mutate(is_scene = ifelse(substr(rows2,0,1)=="[",1,0))
   }else{
-      rows <- html %>% html_nodes("p,font p") %>% html_text()  
+      if(length(html %>% html_nodes("p,font p"))<10 ){
+        rows <- html %>% html_nodes("font[size='3']") %>% 
+          gsub(pattern = '<.*?>', replacement = "|")
+        if(length(rows)==0){
+          rows <- html %>%
+              gsub(pattern = '<br\\s*/?>', replacement = "|")
+        }
+        
+        df_1 <-data.frame()
+        for (i in 1:length(rows)) {
+          rows_2 <- strsplit(rows[i],split="[|]")
+          df_temp <- data.frame(rows_2)
+          names(df_temp) <- c("rows")
+          df_1 <- rbind(df_1, df_temp)
+        }
+        
+        df_2 <- df_1 %>%    
+          mutate(rows2= trimws(rows)) %>%
+          mutate(rows2 = str_replace_all(rows2, "[\n]" , " ")) %>%
+          mutate(rows2 = str_replace_all(rows2, "<b>" , "")) %>%
+           mutate(rows2 = str_replace_all(rows2, "</b>" , "")) %>%
+          mutate(is_scene = ifelse(substr(rows2,0,1)=="[" | substr(rows2,0,1)=="(",1,0)) %>%
+          mutate(rows2= trimws(ifelse(is_scene==1,rows2,str_replace(rows2,"\\[([^\\)]+)\\]",""))   ))
+       
+    }else{
+        rows <- html %>% html_nodes("p,font p") %>% html_text()  
+        df_1 <- data.frame(rows)
+        df_2 <- df_1 %>%
+      mutate(rows2= trimws(str_replace(rows,"\\(([^\\)]+)\\)","") )) %>%
+      mutate(is_scene = ifelse(substr(rows2,0,1)=="[",1,0))
+    } 
   }
-  
-  df2 <- data.frame(rows) %>%
-    mutate(rows2= trimws(str_replace(rows,"\\(([^\\)]+)\\)","") )) %>%
-    mutate(is_scene = ifelse(substr(rows2,0,1)=="[",1,0))
-  df2$split <- str_locate(df2[,"rows"],  "\\w+:|\\w+.\\w+:|\\w+.\\s\\w+:" )[,2]
  
-  df2 <- df2 %>%
-    mutate(character=trimws(substr(rows2,0,split - 1))) %>%
-    mutate(line=trimws(substr(rows2,split + 1,1000000))) %>%
+  df_2$split <- str_locate(df_2[,"rows2"],  "\\w+:|\\w+.\\w+:|\\w+.\\s\\w+:" )[,2]
+ 
+  df_3 <- df_2 %>%
+    mutate(character=ifelse(is.na(split),"",toupper(trimws(substr(rows2,0,split - 1 ))))) %>%
+    mutate(line=ifelse(is.na(split),"",trimws(substr(rows2,split + 1,1000000)))) %>%
     mutate(episode_id = ep_id) %>%
     mutate(line=trimws(str_remove(line,"\\(([^\\)]+)\\)")) ) %>%
-    filter(character != "Written by")
-  df2$ID <- seq.int(nrow(df2)) 
+    filter(character != "WRITTEN BY")
   
-  df3 <- data.frame(df2, scene=cumsum(df2$is_scene))
+
+  df_4 <- data.frame(df_3, scene=cumsum(df_3$is_scene))
   
-  df3 <- df3 %>%
-    filter(rows2!="",!is_scene,!is.na(character))
-  df3$line_num <- seq.int(nrow(df3))
-  df3<- df3 %>%
+  df_5 <- df_4 %>%
+    filter(rows2!="",!is_scene,!is.na(character),character!="")
+
+  df_5$line_num <- seq.int(nrow(df_5))
+  df_6<- df_5 %>%
     dplyr::select(c("episode_id","line_num","scene",'character','line'))
   
-  return(df3)
+  return(df_6)
 }
 
-df2<-read_dialogues(df[1,"link"],df[1,"id"])
+df2<-read_dialogues(df[203,"link"],df[203,"id"])
 ```
 
 ```{r}
 dialogues <- data.frame()
 for (i in 1:nrow(df)) {
   n <- read_dialogues(df[i,"link"],df[i,"id"])
+  print(i)
   print(nrow(n))
   dialogues <- rbind(dialogues, n)
 
 }
 ```
 
+Add word count to dialoges
+```{r}
+dialogues <- dialogues %>%
+  mutate(words = sapply(strsplit(line, " "), length))
+```
+
+
+We can see that some episodes where put together in the same file:
+```{r}
+unique(filter(dialogues, grepl("-",episode_id))$episode_id)
+```
+Now we split those episodes into two different ones:
+```{r}
+dialogues <- dialogues %>%
+  mutate(episode_id = if_else(episode_id == "2 : 12-13" & scene < 36,"2 : 12",episode_id)) %>%
+  mutate(episode_id = if_else(episode_id == "2 : 12-13" & scene >= 36,"2 : 13",episode_id)) %>%
+  mutate(episode_id = if_else(episode_id == "6 : 15-16" & scene < 15,"6 : 15",episode_id)) %>%
+  mutate(episode_id = if_else(episode_id == "6 : 15-16" & scene >= 15,"6 : 16",episode_id)) %>%
+  mutate(episode_id = if_else(episode_id == "9 : 23-24" & scene < 16,"9 : 23",episode_id)) %>%
+  mutate(episode_id = if_else(episode_id == "9 : 23-24" & scene >= 16,"9 : 24",episode_id)) %>%
+  mutate(episode_id = if_else(episode_id == "10 : 17-18" ,"10 : 17",episode_id))
+```
+
+
+```{r}
+dialogues %>%
+  mutate(season = as.integer( trimws(strsplit(episode_id,":")[1][1]))) %>%
+  mutate(episode =as.integer(  trimws(strsplit(episode_id,":")[2][1])))
+```
 
