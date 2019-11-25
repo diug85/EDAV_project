@@ -150,8 +150,22 @@ dialogues <- dialogues %>%
 
 
 ```{r}
-dialogues %>%
-  mutate(season = as.integer( trimws(strsplit(episode_id,":")[1][1]))) %>%
-  mutate(episode =as.integer(  trimws(strsplit(episode_id,":")[2][1])))
+dialogues <- dialogues %>%
+  mutate(season =  trimws(str_extract(episode_id,".+\\:"))) %>%
+  mutate(episode =trimws(str_extract(episode_id,"\\:.+")))
+
+dialogues <- dialogues %>%
+  mutate(season =  as.integer( trimws(str_sub(season, end=-2)))) %>%
+  mutate(episode = as.integer(trimws(str_sub(episode, start=2))))
 ```
+
+Now we have to correct some character names that had typos.
+```{r}
+dialogues <- dialogues %>%
+  mutate(character = if_else(character == "RACH" ,"RACHEL", character)) %>%
+  mutate(character = if_else(character == "MNCA" ,"MONICA", character)) %>%
+  mutate(character = if_else(character == "CHAN" ,"CHANDLER", character)) %>%
+  mutate(character = if_else(character == "PHOE" ,"PHOEBE", character)) 
+```
+
 
