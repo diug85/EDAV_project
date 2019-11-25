@@ -1,0 +1,392 @@
+---
+title: "EDAV Fall 2019 PSet 5, part A"
+author: "Alberto Munguia (am5334) , Bernardo Lopez (bl2786), Ivan Ugalde (du2160)"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+```{r, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, echo = TRUE)
+```
+
+This assignment is designed to help you get started on the final project. Be sure to review the final project instructions (https://edav.info/project.html), in particular the new section on reproducible workflow (https://edav.info/project.html#reproducible-workflow), which summarizes principles that we've discussed in class.
+    
+### 1. The Team
+
+[2 points]
+
+a) Who's on the team? (Include names and UNIs)
+
+ Bernardo Lopez Vicenzio bl2786 \
+ Ivan Ulgalde Gutierrez du2160 \
+ Alberto Munguia Cisneros am5334 \
+
+
+b) How do you plan to divide up the work? (Grading is on a group basis. The point of asking is to encourage you to think about this.)
+
+The structure that we have planned for our final project will cover the following topics:\
+
+### Friends - Analytics
+1. Introduction
+   a)  Sitcom context and general description
+   b)  Character description
+2. DataBase exploitation
+   a)  Sources
+   b)  Web scraping, data cleaning, and structuration
+3. Exploratory Analysis
+   a) Character interventions (frequency, length, and punchlines)
+   b) Clustering of characters (K-means analysis)
+   c) Interaction analysis (Graph analysis)
+4. Correlation analysis 
+   a) Ratings
+   b) Awards
+   c) Character Popularity
+   
+
+The planned assignation of the tasks for each of the members of the team will be:
+
+   * Bernardo's Sections: 2b), 3a) 4a)
+   * Ivan's Sections: 1a) 1b) 2a) 4b)
+   * Alberto's Sections: 3b) 3c) 4c)
+
+Notice that the assignment of tasks will remain flexible during the developpment of the project, and we have established bi-weekly meetings to follow the progress of the project and detect possible bottlenecks. Furthermore we will working on a Github environment to have a control of the information and versions of the project.
+
+
+### 2. The Questions
+
+[6 points]
+
+List three questions that you hope you will be able to answer from your research.
+
+a) Who are the lead characters in the sitcom?\
+
+b) How are the interactions between the characters of the series?\
+
+c) Can we find a correlation between the content of the scripts and the historical ratings between critics and the general audience?\
+
+### 3. Which output format do you plan to use to submit the project? 
+
+[2 points]
+
+(You don't have to use the same format for this assignment -- PSet 5, part A -- and the final project itself.)
+
+Choices are:
+
+pdf_document  
+
+html_document  
+
+bookdown book: https://bookdown.org/yihui/bookdown/
+
+shiny app: https://shiny.rstudio.com/  
+
+(Remember that it's ok to have pieces of the project that don't fit into the chosen output format; in those cases you can provide links to the relevant material.)
+
+* The output of our project will be an html with possible use of shiny framework to introduce interactive graphs.
+
+
+### 4. The Data
+
+What is your data source?  What is your method for importing data? Please be specific. Provide relevant information such as any obstacles you're encountering and what you plan to do to overcome them.
+
+[5 points]
+
+1. Data Sources:
+The primary data sources that we used for our project are:
+
+   * Dialogues: For the dialogues of the 'Friends' we have used a database that contains a transcript of all the episodes of the TV series. This is an open resource built by fans of the sit-com and that has been compiled in a Github repository.The data is organized in html documents per episode.
+
+      + The data can be accessed via: https://fangj.github.io/friends/
+
+
+   * TV-Ratings: For the ratings, we have used the IMDb Datasets which is available for access to customers for personal and non-commercial use.  The data is structured in seven tables that contains general information of the show (genre, start year, end year, episode duration, etc.), and specific information of each episode (title, ratings, characters, crew, etc.). A relevant characteristic of the database is that it is refreshed daily. We have made the consultation of the Data on Novembre 10, 2019.
+
+      + The data can be accessed via: https://datasets.imdbws.com/
+
+
+2. Data import and exploitation:
+
+      * Dialogues Import: For importing the dialogues we have created an R-code for the web scrapping of the dialogues of each character of each episode of the tv-series. To accomplish this task we have used the R libraries rvest, robotstxt, and tidyverse, and we have created a structured data table with the Id of the episode, line, scene, character, and dialogue.
+
+```{r}
+library(rvest)
+library(robotstxt)
+library(tidyverse)
+
+url <- "https://fangj.github.io/friends/"
+#paths_allowed(url)
+
+html <- read_html(url)
+episodes_list <- html %>% html_nodes("li")  %>% html_nodes("a")
+link <- episodes_list %>% html_attr("href")
+long_name <- episodes_list %>% html_text
+df <- data.frame(long_name,link) %>%
+  mutate(numbers = str_extract(long_name,"(\\d+-\\d+)|\\d+") ) %>%
+  mutate(season=ifelse(str_length(str_match(numbers,"\\d+"))==3, substr(numbers,0,1),substr(numbers,0,2) ) ) %>%
+  mutate(number=str_replace(str_replace(numbers,season,""), paste("-",season,sep = "")  ,"-") ) %>%
+  mutate(name = trimws(str_replace(long_name,"(\\d+-\\d+)|\\d+","")) )%>%
+  mutate(link = paste(url,link,sep="")) %>%
+  mutate(id=paste(season,":",number))
+df <- df[colnames(df)!="numbers"]
+
+read_dialogues <- function(link,ep_id) {
+  html <- read_html(link)
+  #### Special case for episode 9 : 15
+  if (ep_id == "9 : 15"){
+    df_1 <- read.csv("C:/Users/mamun/Documents/EDVA Fall 2019/Info Project/episode_9_15.csv")
+    df_2 <- df_1 %>%
+      mutate(rows2= trimws(str_replace(rows,"\\(([^\\)]+)\\)","") )) %>%
+      mutate(is_scene = ifelse(substr(rows2,0,1)=="[",1,0))
+  }else{
+    if(length(html %>% html_nodes("p,font p"))<10 ){
+      rows <- html %>% html_nodes("font[size='3']") %>% 
+        gsub(pattern = '<.*?>', replacement = "|")
+      if(length(rows)==0){
+        rows <- html %>%
+          gsub(pattern = '<br\\s*/?>', replacement = "|")
+      }
+      
+      df_1 <-data.frame()
+      for (i in 1:length(rows)) {
+        rows_2 <- strsplit(rows[i],split="[|]")
+        df_temp <- data.frame(rows_2)
+        names(df_temp) <- c("rows")
+        df_1 <- rbind(df_1, df_temp)
+      }
+      
+      df_2 <- df_1 %>%    
+        mutate(rows2= trimws(rows)) %>%
+        mutate(rows2 = str_replace_all(rows2, "[\n]" , " ")) %>%
+        mutate(rows2 = str_replace_all(rows2, "<b>" , "")) %>%
+        mutate(rows2 = str_replace_all(rows2, "</b>" , "")) %>%
+        mutate(is_scene = ifelse(substr(rows2,0,1)=="[" | substr(rows2,0,1)=="(",1,0)) %>%
+        mutate(rows2= trimws(ifelse(is_scene==1,rows2,str_replace(rows2,"\\[([^\\)]+)\\]",""))   ))
+      
+    }else{
+      rows <- html %>% html_nodes("p,font p") %>% html_text()  
+      df_1 <- data.frame(rows)
+      df_2 <- df_1 %>%
+        mutate(rows2= trimws(str_replace(rows,"\\(([^\\)]+)\\)","") )) %>%
+        mutate(is_scene = ifelse(substr(rows2,0,1)=="[",1,0))
+    } 
+  }
+  
+  df_2$split <- str_locate(df_2[,"rows2"],  "\\w+:|\\w+.\\w+:|\\w+.\\s\\w+:" )[,2]
+  
+  df_3 <- df_2 %>%
+    mutate(character=ifelse(is.na(split),"",toupper(trimws(substr(rows2,0,split - 1 ))))) %>%
+    mutate(line=ifelse(is.na(split),"",trimws(substr(rows2,split + 1,1000000)))) %>%
+    mutate(episode_id = ep_id) %>%
+    mutate(line=trimws(str_remove(line,"\\(([^\\)]+)\\)")) ) %>%
+    filter(character != "WRITTEN BY")
+  
+  df_4 <- data.frame(df_3, scene=cumsum(df_3$is_scene))
+  
+  df_5 <- df_4 %>%
+    filter(rows2!="",!is_scene,!is.na(character),character!="")
+  df_5$line_num <- seq.int(nrow(df_5))
+  df_6<- df_5 %>%
+    dplyr::select(c("episode_id","line_num","scene",'character','line'))
+  
+  return(df_6)
+}
+df2<-read_dialogues(df[203,"link"],df[203,"id"])
+
+
+
+dialogues <- data.frame()
+for (i in 1:nrow(df)) {
+  n <- read_dialogues(df[i,"link"],df[i,"id"])
+  #print(i)
+  #print(nrow(n))
+  dialogues <- rbind(dialogues, n)
+}
+
+
+
+dialogues <- dialogues %>%
+  mutate(words = sapply(strsplit(line, " "), length))
+
+
+unique(filter(dialogues, grepl("-",episode_id))$episode_id)
+
+
+dialogues <- dialogues %>%
+  mutate(episode_id = if_else(episode_id == "2 : 12-13" & scene < 36,"2 : 12",episode_id)) %>%
+  mutate(episode_id = if_else(episode_id == "2 : 12-13" & scene >= 36,"2 : 13",episode_id)) %>%
+  mutate(episode_id = if_else(episode_id == "6 : 15-16" & scene < 15,"6 : 15",episode_id)) %>%
+  mutate(episode_id = if_else(episode_id == "6 : 15-16" & scene >= 15,"6 : 16",episode_id)) %>%
+  mutate(episode_id = if_else(episode_id == "9 : 23-24" & scene < 16,"9 : 23",episode_id)) %>%
+  mutate(episode_id = if_else(episode_id == "9 : 23-24" & scene >= 16,"9 : 24",episode_id)) %>%
+  mutate(episode_id = if_else(episode_id == "10 : 17-18" ,"10 : 17",episode_id))
+
+
+
+head(dialogues, n=5L)
+
+
+```
+
+   * Rating Import: For importing the rating form IMDb we have downloaded manually the seven tables Because the size of the data sets it will be impossible to save the IMDb information in the Github repository. With the help of the dplyr filter, inner_join, and left_join we have separated the information corresponding to 'Friends' ratings.  
+
+
+```{r}
+
+# Read from your local disc the downloaded information of IMDb
+
+#dfratings=read.csv("C:/Users/mamun/Documents/EDVA
+#Fall 2019/Info Project/Titleratings.tsv", sep = "\t")
+#dfname=read.csv("C:/Users/mamun/Documents/EDVA
+#Fall 2019/Info Project/Namebasics.tsv", sep = "\t")
+#dfepisode=read.csv("C:/Users/mamun/Documents/EDVA
+#Fall 2019/Info Project/Titleepisode.tsv", sep = "\t")
+#dfTitle=read.csv("C:/Users/mamun/Documents/EDVA
+#Fall 2019/Info Project/Titlebasics.tsv", sep = "\t")
+#dfPrincipals=read.csv("C:/Users/mamun/Documents/EDVA
+#Fall 2019/Info Project/Titleprincipals.tsv", sep = "\t")
+#dfCrew=read.csv("C:/Users/mamun/Documents/EDVA
+#Fall 2019/Info Project/TitleCrew.tsv", sep = "\t")
+#dfakas=read.csv("C:/Users/mamun/Documents/EDVA
+#Fall 2019/Info Project/Titleakas.tsv", sep = "\t")
+# Save the information in local disc
+
+#save(dfratings, file = "C:/Users/mamun/Documents/EDVA
+#Fall 2019/Info Project/dfratings.RData")
+#save(dfTitle, file = "C:/Users/mamun/Documents/EDVA
+#Fall 2019/Info Project/dfTitle.RData")
+#save(dfepisode, file = "C:/Users/mamun/Documents/EDVA
+#Fall 2019/Info Project/dfepisode.RData")
+#save(dfname, file = "C:/Users/mamun/Documents/EDVA
+#Fall 2019/Info Project/dfname.RData")
+#save(dfPrincipals, file = "C:/Users/mamun/Documents/EDVA
+#Fall 2019/Info Project/dfPrincipals.RData")
+#save(dfCrew, file = "C:/Users/mamun/Documents/EDVA
+#Fall 2019/Info Project/dfCrew.RData")
+#save(dfakas, file = "C:/Users/mamun/Documents/EDVA
+#Fall 2019/Info Project/dfakas.RData")
+
+# Load the required Datasets
+
+load(file = "C:/Users/mamun/Documents/EDVA Fall 2019/Info Project/dfratings.RData")
+load(file = "C:/Users/mamun/Documents/EDVA Fall 2019/Info Project/dfTitle.RData")
+load(file = "C:/Users/mamun/Documents/EDVA Fall 2019/Info Project/dfepisode.RData")
+
+IDFriends=filter(dfTitle, primaryTitle=='Friends' & startYear=='1994' & endYear=='2004')
+colnames(IDFriends)=c('parentTconst', 'titleType', 'primaryTitle', 'originalTitle',
+                      'isAdult', 'startYear', 'endYear', 'runtimeMinutes', 'genre')
+IDEpisodes=inner_join(IDFriends[,1:3],dfepisode, by=c("parentTconst"="parentTconst"))
+IDEpisodesRatings=left_join(IDEpisodes,dfratings, by=c("tconst"="tconst"))
+
+
+head(IDEpisodesRatings, n=5L)
+
+```
+
+
+3. Data expolitation difficulties & Working process:
+
+   * IMDb Dataset: 
+   
+      + The first obstacle that we faced with the IMDb datasets was the size of the data sets, some of them have millions of rows with the information of Tv-series, shorts, movies, documentaries, and other entertainment formats. It was impossible to store them in our Github. For the reproducibility of our work, we plan to create smaller data sets that could be stored in our Github and establish a keep record of our original data sources.
+            
+      + The second obstacle was to track which was the data corresponding to our case of study. For example, we searched in the dataset only by name 'Friends' we found 178 results of TV-series or movies called 'Friends'. It was necessary to understand and do some research on the years of beginning and end of the series to refine the search.
+      
+      
+      +  Another obstacle was that the ID for TV-series across the seven IMDb datasets was not uniform. For example, in the dataset corresponding to the titles (dfTitle) of the TV-series, the ID to identify the show is named "tconst", while on the dataset that where we can get the ID of the episode the name correspond to the ID of the episode, and the ID for the TV-series is called "parentTconst". These errors were identified through the exploration of the datasets.
+
+
+   * Dialogue Dataset: 
+   
+      +  The main obstacle of the dialogue dataset is that not all the HTML files share the same format. In our first, we were not able to extract the dialogues of 15 episodes. We have overcome this difficulty by incorporating special cases in our scrapping code that take into account the special cases that we have detected.
+      
+      +  The second difficulty that we have experience in the dialogue dataset is the cleaning of the dialogues itself. This still a working progress task, we are trying to standardize the content of the dialogues, by identifying different names for the same character, common typos and regular expressions that could hinder our analysis. We plan to use some features from the packages 'stringr' and 'stringi', to explore and standardize the dataset.
+      
+      
+### 5. Provide a short summary, including 2-3 graphs, of your initial investigations. 
+
+[10 points]
+
+
+
+As we have already mention we still improving the quality of our data. Nevertheless we have found the next preliminary results:
+
+
+1. The distribution of the ratings is not related to the maturity of the tv-show. We can make the hypothesis that the ratings have been increasing as the Tv-series come to its end. Nevertheless, the data shows that the popularity of 'Friends fluctuated within its existence, Season 10, 5 and 4 are rated as best in the IMDb rating, while season 1, 9 and 3 have the lowest ratings.
+
+
+```{r}
+library(ggplot2)
+
+
+IDKeys=IDEpisodesRatings %>%
+  mutate(episode_id=paste(as.character(IDEpisodesRatings$seasonNumber), ":",
+                          ifelse(as.numeric(as.character(IDEpisodesRatings$episodeNumber))>=10,
+                                    as.character(IDEpisodesRatings$episodeNumber),
+                                    paste0(as.character("0"),as.character(IDEpisodesRatings$episodeNumber)))))
+           
+
+IDKeys=IDKeys%>%mutate(averageRating=as.numeric(as.character(averageRating)))%>%
+  mutate(seasonNumber=as.factor(as.numeric(as.character(seasonNumber))))%>%
+  mutate(episodeNumber=as.numeric(as.character(episodeNumber)))
+
+
+ggplot(data=IDKeys,aes(x=reorder(seasonNumber, -averageRating, FUN = median),y=averageRating))+
+  geom_boxplot()
+
+
+```
+
+2. Regarding the word count, we can observe that from the six main characters Ross and Rachel are the characters that have higher participation in the TV-show, followed by Joey and Chandler.
+
+```{r}
+
+DF_final=inner_join(dialogues,IDKeys, by= c("episode_id"="episode_id"))
+
+
+DFwordcount=DF_final%>%
+               group_by(character)%>%
+               summarize(num_lines= n(), totwords=sum(words,na.rm = T))%>%
+               arrange(-num_lines, -totwords)
+  
+
+ggplot(DFwordcount[1:6,], aes(reorder(character, totwords), totwords, fill=character)) +
+  geom_col() + coord_flip()
+
+
+```
+
+
+3. Regarding the participation of each character per season as the percentage of the total words of the main characters, we can observe that the importance of each character also fluctuated along the seasons. 
+
+
+```{r}
+
+DFwordcount_season=DF_final%>%
+                    group_by(character, seasonNumber)%>%
+                    summarize(num_lines= n(), totwords=sum(words,na.rm = T))%>%
+                    arrange(-num_lines, -totwords)
+
+DFwordcount_season=filter(DFwordcount_season, character=='ROSS' | character=='RACHEL'| character=='MONICA'| 
+                            character=='CHANDLER' | character=='JOEY' | character=='PHOEBE')
+
+
+DFwordcount_season_df=DFwordcount_season%>%
+                      group_by(seasonNumber)%>%
+                      summarize(totwords=sum(totwords,na.rm = T))
+                      
+  
+DFwordcount_season=inner_join(DFwordcount_season,DFwordcount_season_df, by=c("seasonNumber"="seasonNumber") )
+
+
+DFwordcount_season=DFwordcount_season%>%
+                    mutate(percentage=totwords.x/totwords.y)%>%
+                    mutate(totwords.x=NULL,totwords.y=NULL )
+
+
+ggplot(DFwordcount_season, aes(seasonNumber, percentage, group=character, ,color=character,linetype=character)) +
+  geom_line(size=1.1) 
+
+
+
+```
