@@ -19,7 +19,7 @@ library(extracat)
 Aca poner alguna explicacion a la seria, link a la pagina del fan este y los objetivos del trabajo.
 
 ## Data sources
-We two different data sets:
+We used two different data sets:
 
 * Chapter ratings from IMBD website https://www.imdb.com/interfaces/.
 * Dialogues from https://fangj.github.io/friends/, 
@@ -33,7 +33,7 @@ url <- "https://fangj.github.io/friends/"
 paths_allowed(url)
 ```
 
-```{r echo=FALSE}
+```{r echo=FALSE, eval=FALSE}
 html <- read_html(url)
 episodes_list <- html %>% html_nodes("li")  %>% html_nodes("a")
 link <- episodes_list %>% html_attr("href")
@@ -100,6 +100,7 @@ read_dialogues <- function(link,ep_id) {
     mutate(episode_id = ep_id) %>%
     mutate(line=trimws(str_replace_all(line,"\\(([^\\)]+)\\)"," ")) ) %>%
     mutate(line=trimws(str_replace_all(line,"[\r\n]"," ")) ) %>%
+    mutate(line=trimws(str_replace_all(line,'[\"]'," ")) ) %>%
     mutate(line=trimws(str_replace_all(line,"\\s+"," ")) ) %>%
     filter(character != "WRITTEN BY")
   
@@ -118,7 +119,7 @@ read_dialogues <- function(link,ep_id) {
 
 ```
 
-```{r echo=FALSE}
+```{r echo=FALSE, eval=FALSE}
 dialogues <- data.frame()
 for (i in 1:nrow(df)) {
   n <- read_dialogues(df[i,"link"],df[i,"id"])
@@ -128,21 +129,29 @@ for (i in 1:nrow(df)) {
 }
 head(dialogues)
 ```
-## Data transformation
 
-Add word count to dialoges
+```{r echo=FALSE}
+# To speed up the process we just read the data file instead of scraping
+dialogues <- read_csv("data/friends_scraping.csv")
+head(dialogues)
+```
+
+## Data transformation
+Add word count to dialogues
+
 ```{r echo=FALSE}
 dialogues <- dialogues %>%
   mutate(words = sapply(strsplit(line, " "), length))
-print(head(dialogues %>% select(line,words)))
+head(dialogues %>% select(line,words))
 ```
-
 
 We can see that some episodes where put together in the same file:
 ```{r echo=FALSE}
-print(unique(filter(dialogues, grepl("-",episode_id))$episode_id))
+ unique(filter(dialogues, grepl("-",episode_id))$episode_id)
 ```
+
 Now we split those episodes into two different ones:
+
 ```{r echo=FALSE}
 dialogues <- dialogues %>%
   mutate(episode_id = if_else(episode_id == "2 : 12-13" & scene < 36,"2 : 12",episode_id)) %>%
@@ -155,6 +164,7 @@ dialogues <- dialogues %>%
 ```
 
 For more clarity, we will add season and episode columns.
+
 ```{r echo=FALSE}
 dialogues <- dialogues %>%
   mutate(season =  trimws(str_extract(episode_id,".+\\:"))) %>%
@@ -166,6 +176,7 @@ dialogues <- dialogues %>%
 ```
 
 Now we have to correct some character names that had typos.
+
 ```{r echo=FALSE}
 dialogues <- dialogues %>%
   mutate(character = if_else(character == "RACH" ,"RACHEL", character)) %>%
@@ -173,27 +184,42 @@ dialogues <- dialogues %>%
   mutate(character = if_else(character == "CHAN" ,"CHANDLER", character)) %>%
   mutate(character = if_else(character == "PHOE" ,"PHOEBE", character))
 
-print(head(dialogues))
+head(dialogues)
 ```
 
 More data transformation will be used and explained in each of the Results subsections.
 
-```{r echo=FALSE}
-# Remove this
-# dialogues <- read_csv("data/friends_dialogues.csv")
-```
 ## Missing values
-To search for missing values whe look at the numer of missing values per columns in **dialouges**.
+To search for missing values we look at the number of missing values per columns in **dialouges**.
 ```{r echo=FALSE}
 colSums(is.na(dialogues))
 ```
+
+There appear to be some missing values for line column. We will use **visna** from **extracats** library to see the pattern of missing values.
+
+```{r echo=FALSE}
+visna(dialogues)
+```
+
+This missing values are due to a different formats in the Git Hub page used for web scraping. For example, lines like "Paolo: (something in Italian)" render a NA line because the scraping code removes everything between parenthesis.
+
+We decided to fill those missing values with "-". By doing so we will keep the register for those characters dialogue.
+
+```{r echo=FALSE}
+dialogues <- dialogues %>%
+  mutate(words = if_else(is.na(line) , 1, as.double(words))) %>%
+  mutate(line = if_else(is.na(line) ,"-", line)) 
+```
+
+This is not a problem because there are only 62 lines with this issue. This is a really small number compared with the total number of lines (more than 61 thousand).
+
 We see that we do not have NA's in the data after scraping and data transformation process.
 
 ## Results
 
 ### Main characters
 
-Friends is a TV show that tells the stroy of a group of six friends: **Monica**, **Rachel**, **Phoebe**, **Chandler**, **Ross** and **Joey**.
+Friends is a TV show that tells the story of a group of six friends: **Monica**, **Rachel**, **Phoebe**, **Chandler**, **Ross** and **Joey**.
 Is one of these characters more important than others? We try to answer this question by looking at the number of lines for each of these main characters.
 
 ```{r echo=FALSE}
@@ -207,13 +233,14 @@ dialogues %>%
     labs(x="character",y="lines count") +
     theme_bw()
 ```
-We can see thar Rachel is the character with more lines and Phoebe is the character with less lines.
+
+We can see that Rachel is the character with more lines and Phoebe is the character with less lines.
 Now we focus in the number of words instead of the number of lines.
 
 ```{r echo=FALSE}
 dialogues %>%
   filter(character %in% main_characters) %>%
-  group_by(character) %>% 
+  group_by(character) %>%
   summarise(words_count=sum(words)) %>%
   ggplot(aes(x=reorder(character, -words_count),y=words_count)) +
     geom_col(fill="#0d1fe6") +
@@ -221,8 +248,9 @@ dialogues %>%
     labs(x="character",y="words count") +
     theme_bw()
 ```
-Rachel and Ross are again the characters that speek the most and Phoebe the one with less words.
-We can see that Monica was number 3 for number lines but she is number 5 for number of words. This suggests that MOnicas lines tend to be shorter.
+
+Rachel and Ross are again the characters that speak the most and Phoebe the one with less words.
+We can see that Monica was number 3 for number lines but she is number 5 for number of words. This suggests that Monica's lines tend to be shorter.
 The opposite happens with Joey. He is number 5 for number of lines, but he is third for number of words. This suggests his lines tend to be longer.
 
 ```{r echo=FALSE}
@@ -236,6 +264,7 @@ dialogues %>%
      facet_wrap(~character) +
      theme_bw()
 ```
+
 By looking into lines per episode distribution we find the following:
 * Monica's distribution looks more narrow that the others. This indicates that there are few episodes in which Monica speaks a lot.
 * Chandler and Ross have large right tails, we infer that those characters have episodes in which they speak a lot.
@@ -243,16 +272,19 @@ By looking into lines per episode distribution we find the following:
 
 ### LDA Topic modelling
 For topic modelling we will use the package **textmineR**. We will try to find the topic for each episode. To do so we will create a document for each episode, so we have to group lines by episode_id.
+
 ```{r echo=FALSE}
 dialogues_by_episode <- dialogues %>%
   group_by(episode_id) %>% 
-  summarise(lines=paste(line, collapse = " "))
+  summarise(lines=trimws(paste(line, collapse = " ")))
 head(dialogues_by_episode)
 ```
 
+Function CrateDtm creates a document term matrix. To do so we use a group of stopwords, words we don't want to use because they are used frequently in English language and do not give insightful information.
 
 ```{r echo=FALSE}
 #create DTM
+set.seed(12345)
 dtm <- CreateDtm(dialogues_by_episode$lines, 
                  doc_names = dialogues_by_episode$episode_id, 
                  stopword_vec = c(stopwords::stopwords("en"), 
@@ -260,26 +292,30 @@ dtm <- CreateDtm(dialogues_by_episode$lines,
                                   tolower(main_characters),
                                   c("yeah","uh","ah","ya","umm","ow","hey","um","huh",
                                     "uhm","gonna","wanna","ohh","ooh","mr","ahh","whoa",
-                                    "la","ha")),
+                                    "la","ha","ugh","woah")),
                  ngram_window = c(1, 2))
 dtm <- dtm[,colSums(dtm) > 2]
 ```
 
-```{r echo=FALSE}
+We will use document term matrix to create a Term Document Frequency matrix that counts the number of times a term appears (term frequency) and the number of documents in which a term appears (document frequency).
 
-#explore the basic frequency
+These are the main terms ordered by term frequency:
+
+```{r echo=FALSE }
+
 tf <- TermDocFreq(dtm = dtm)
 original_tf <- tf %>% select(term, term_freq,doc_freq)
 rownames(original_tf) <- 1:nrow(original_tf)
-head(original_tf)
-# Eliminate words appearing less than 2 times or in more than half of the documents
-vocabulary <- tf[ tf$term_freq > 1 && tf$doc_freq < nrow(dtm) / 2 ]
-
+head( original_tf[ order(original_tf$term_freq, decreasing=TRUE), ] )
 ```
+
+Now we fit a Latent Dirichlet allocation model in which we will try to fit 15 topics into the collection of episodes. This will return to main matrices:
+
+* **theta**: Matrix with the probability of topic per document -> P(topic | document).
+* **phi**: Matrix with the probability of term per topic -> P(term | topic).
 
 ```{r echo=FALSE}
 set.seed(12345)
-
 model <- FitLdaModel(dtm = dtm, 
                      k = 15,
                      iterations = 1000,
@@ -291,36 +327,47 @@ model <- FitLdaModel(dtm = dtm,
                      calc_coherence = TRUE,
                      calc_r2 = TRUE,
                      cpus = 2) 
+
+print("Theta:")
+head(model$theta[,1:5])
+print("Phi:")
+head(model$phi[,1:5])
 ```
+
+Now the 15 topics have been created. To know about the topics quality we look into the **topic coherence**, this is a measure of how associated are words in a topic.
 
 ```{r echo=FALSE}
 summary(model$coherence)
 
-
 hist(model$coherence, 
-     col= "blue", 
-     main = "Histogram of probabilistic coherence")
+     col= "#0d1fe6", 
+     main = "Histogram of topic coherence")
 ```
 
+We will use phi to get the top 5 terms per topic.
+
 ```{r echo=FALSE}
-# Get the top terms of each topic
 model$top_terms <- GetTopTerms(phi = model$phi, M = 5)
-print(t(model$top_terms))
+t(model$top_terms)
 ```
 
+The next step is to compute the topic prevalence using theta. Topic prevalence indicate the most frequent topics in the TV show.
+
 ```{r echo=FALSE}
-# Get the prevalence of each topic
-# You can make this discrete by applying a threshold, say 0.05, for
-# topics in/out of docuemnts. 
 model$prevalence <- colSums(model$theta) / sum(model$theta) * 100
 
-# prevalence should be proportional to alpha
-plot(model$prevalence, model$alpha, xlab = "prevalence", ylab = "alpha")
+ggplot() +
+  geom_point(aes(x=model$prevalence,y=model$alpha), color = "#0d1fe6")+
+    ggtitle("Topic prevalence") +
+    labs(x="prevalence",y="alpha") +
+    theme_bw()
+
 ```
+
+Finally, we get a summary for the complete LDA model.
 
 ```{r echo=FALSE}
 
-# put them together, with coherence into a summary table
 model$summary <- data.frame(topic = rownames(model$phi),
                             coherence = round(model$coherence, 3),
                             prevalence = round(model$prevalence,3),
@@ -328,12 +375,15 @@ model$summary <- data.frame(topic = rownames(model$phi),
                               paste(x, collapse = ", ")
                             }),
                             stringsAsFactors = FALSE)
-```
 
-```{r echo=FALSE}
 model$summary[ order(model$summary$prevalence, decreasing = TRUE) , ]
 ```
 
+We can see that the most prevalent (frequent) topic has words like "good", "god","great", "time". This makes sense, this words are very frequent in the TV show and that is why they give very little information about the topic. That is why the coherence is 0.0.
+
+The other topics in the model have less prevalence but they are more coherent. If you are a fan of the show and if you read the list of top terms, we are sure you can remember episodes in which those terms were important.
+
+To find those important episodes we created a d3 tool. We wrote a csv file using theta in which, for each episode and topic we put the probability of that topic given the episode and the top terms of that topic.
 
 ```{r echo=FALSE}
 assignments <- rownames_to_column(as.data.frame(t(model$theta)),var="rowID") %>%
@@ -341,10 +391,14 @@ assignments <- rownames_to_column(as.data.frame(t(model$theta)),var="rowID") %>%
   rename(topic2=topic) %>%
   rename(rowID2=rowID) %>%
   rename(topic=rowID2) %>%
-  rename(rowID=topic2)
+  rename(rowID=topic2) %>%
+  mutate(topic_num=  as.integer(substr(topic,3,1000000)) )
 
-write.csv(assignments,"data/topics_assignments.csv")
+assignments2 <- merge(x = assignments, y = model$summary[,c("topic","top_terms")], by = "topic", all.x = TRUE)
+head(assignments2)
+
+write.csv(assignments2,"data/topics_assignments.csv")
 ```
 
-
+In the following link you can see the d3 tool: [d3TopicModellingTool](https://github.com/Bernacho/EDAV_project/blob/master/d3_lda.html){target="_blank"}  
 
