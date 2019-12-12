@@ -14,6 +14,7 @@ library(robotstxt)
 library(tidyverse)
 library(textmineR)
 library(extracat)
+library(htmltools)
 ```
 ## Introduction
 Aca poner alguna explicacion a la seria, link a la pagina del fan este y los objetivos del trabajo.
@@ -414,5 +415,9 @@ head(assignments3)
 write.csv(assignments3,"docs/topics_assignments.csv")
 ```
 
-In the following link you can see the d3 tool: [d3TopicModellingTool](https://bernacho.github.io/EDAV_project/d3_lda.html){target="_blank"}  
+In the following link you can see the d3 tool: 
 
+
+```{r include=FALSE}
+htmltools::includeHTML("https://bernacho.github.io/EDAV_project/d3_lda.html")
+```
