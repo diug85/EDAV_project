@@ -18,7 +18,8 @@
             var all_data = [];
 			var rowConverter = function (d) {
             return {
-                episode: d.rowID,
+                episode: d.id,
+                episode_name: d.name,
                 topic_num: +d.topic_num,
                 topic: d.topic,
                 value: +d.value,
@@ -71,12 +72,24 @@
                 .attr("y",(d,i) => yScale(d.value))
                 .attr("width",xScale.bandwidth())
                 .attr("height",(d,i) =>600 -  yScale(d.value));
+
+                svg.select("g#plot").selectAll("text.label").transition().duration(500).style("opacity",0);
+                setTimeout(function(){
+                    var labels = svg.select("g#plot").selectAll("text.label").data(sel);
+                    labels.enter().append("text").attr("class","label").attr("transform","rotate(-90)").style("opacity",0)
+                    .attr("y",d=>xScale(d.episode)).attr("x",-580).attr("fill","white").style("font","18px serif")
+                    .merge(labels)
+                    .text(d=>d.episode_name)
+                    .attr("y",d=>xScale(d.episode)+xScale.bandwidth()/2).attr("x",-580)
+                    .transition().duration(500).style("opacity",1);
+                }, 500);
+                
             }
             
             d3.csv("https://bernacho.github.io/EDAV_project/topics_assignments.csv", rowConverter)
             .then(function(data) {
                 all_data = data;
-
+                
                 var data_max = d3.max(all_data.map(d=>d.value))
                 yScale.domain([0,data_max]);
                 yAxis = d3.axisLeft(yScale);

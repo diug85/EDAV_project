@@ -38,7 +38,7 @@ html <- read_html(url)
 episodes_list <- html %>% html_nodes("li")  %>% html_nodes("a")
 link <- episodes_list %>% html_attr("href")
 long_name <- episodes_list %>% html_text
-df <- data.frame(long_name,link) %>%
+episodes_df <- data.frame(long_name,link) %>%
   mutate(numbers = str_extract(long_name,"(\\d+-\\d+)|\\d+") ) %>%
   mutate(season=ifelse(str_length(str_match(numbers,"\\d+"))==3, substr(numbers,0,1),substr(numbers,0,2) ) ) %>%
   mutate(number=str_replace(str_replace(numbers,season,""), paste("-",season,sep = "")  ,"-") ) %>%
@@ -46,7 +46,7 @@ df <- data.frame(long_name,link) %>%
   mutate(link = paste(url,link,sep="")) %>%
   mutate(id=paste(season,":",number))
 
-df <- df[colnames(df)!="numbers"]
+episodes_df <- episodes_df[colnames(episodes_df)!="numbers"]
 ```
 
 ```{r echo=FALSE}
@@ -133,15 +133,17 @@ head(dialogues)
 ```{r echo=FALSE}
 # To speed up the process we just read the data file instead of scraping
 dialogues <- read_csv("data/friends_scraping.csv")
+episodes_df <- read_csv("data/friends_episodes.csv")
 head(dialogues)
 ```
 
 ## Data transformation
-Add word count to dialogues
+Add word count to dialogues.
 
 ```{r echo=FALSE}
 dialogues <- dialogues %>%
   mutate(words = sapply(strsplit(line, " "), length))
+
 head(dialogues %>% select(line,words))
 ```
 
@@ -160,7 +162,18 @@ dialogues <- dialogues %>%
   mutate(episode_id = if_else(episode_id == "6 : 15-16" & scene >= 15,"6 : 16",episode_id)) %>%
   mutate(episode_id = if_else(episode_id == "9 : 23-24" & scene < 16,"9 : 23",episode_id)) %>%
   mutate(episode_id = if_else(episode_id == "9 : 23-24" & scene >= 16,"9 : 24",episode_id)) %>%
-  mutate(episode_id = if_else(episode_id == "10 : 17-18" ,"10 : 17",episode_id))
+  mutate(episode_id = if_else(episode_id == "10 : 17-18" ,"10 : 17",episode_id)) 
+
+episodes_df <- rbind(episodes_df,c("","","2","12","The Superbowl (part 1)","2 : 12"))
+episodes_df <- rbind(episodes_df,c("","","2","13","The Superbowl (part 2)","2 : 13"))
+
+episodes_df <- rbind(episodes_df,c("","","6","15","That Could Have Been (part 1)","6 : 15"))
+episodes_df <- rbind(episodes_df,c("","","6","16","That Could Have Been (part 2)","6 : 16"))
+
+episodes_df <- rbind(episodes_df,c("","","9","23","In Barbados (part 1)","9 : 23"))
+episodes_df <- rbind(episodes_df,c("","","9","24","In Barbados (part 2)","9 : 24"))
+
+episodes_df <- rbind(episodes_df,c("","","10","17","The Last One","10 : 17"))
 ```
 
 For more clarity, we will add season and episode columns.
@@ -391,13 +404,14 @@ assignments <- rownames_to_column(as.data.frame(t(model$theta)),var="rowID") %>%
   rename(topic2=topic) %>%
   rename(rowID2=rowID) %>%
   rename(topic=rowID2) %>%
-  rename(rowID=topic2) %>%
+  rename(id=topic2) %>%
   mutate(topic_num=  as.integer(substr(topic,3,1000000)) )
 
 assignments2 <- merge(x = assignments, y = model$summary[,c("topic","top_terms")], by = "topic", all.x = TRUE)
-head(assignments2)
+assignments3 <- merge(x = assignments2, y = episodes_df[,c("id","name")], by = "id", all.x = TRUE)
 
-write.csv(assignments2,"docs/topics_assignments.csv")
+head(assignments3)
+write.csv(assignments3,"docs/topics_assignments.csv")
 ```
 
 In the following link you can see the d3 tool: [d3TopicModellingTool](https://bernacho.github.io/EDAV_project/d3_lda.html){target="_blank"}  
