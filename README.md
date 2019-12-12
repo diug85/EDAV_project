@@ -1,6 +1,8 @@
 # EDAV_project
 EDAV Final project
 
+Final project link: https://bernacho.github.io/EDAV_project/final_project.Rmd
+
 Notebook: https://github.com/yashu-seth/friends-analysis-blog/blob/master/dataframe_creation.R
 
 Dialogues: https://fangj.github.io/friends/
