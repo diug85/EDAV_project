@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Boxplots</title>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+  </head>
+
+	<body>
+        <h1>Episodes by topic</h1>
+        <p>Click the circles to see the episodes with highest P(topic | episode).</p>
+		<svg width="1200" height="1000">
+            <g id="selectors"></g>
+            <g id="plot" transform="translate(600,50)"></g>
+        </svg>
+		
+        <script type="text/javascript">
+            var all_data = [];
+			var rowConverter = function (d) {
+            return {
+                episode: d.rowID,
+                topic_num: +d.topic_num,
+                topic: d.topic,
+                value: +d.value,
+                top_terms: d.top_terms
+                }
+            };  
+            function onlyUnique(value, index, self) { 
+                return self.indexOf(value) === index;
+            }
+            var svg = d3.select("svg");
+            
+
+            var xScale = d3.scaleBand()
+                        .domain([0, 1, 2, 3, 4])
+                        .range([0, 500])
+                        .paddingInner(.1);
+
+            var yScale = d3.scaleLinear()
+                        .domain([0, 100])
+                        .range([600, 0]);
+            
+            var xAxis = d3.axisBottom(xScale);
+            var yAxis = d3.axisLeft(yScale);
+            svg.select("g#plot").append("g").style("font","20px serif")
+            .attr("id","xAxis").attr("transform","translate(0,600)").call(xAxis);
+            svg.select("g#plot").append("g").style("font","15px serif")
+            .attr("id","yAxis").call(yAxis);
+
+            svg.select("g#plot").append("text").style("font","20px serif").attr("transform","translate(250,670)").text("Episode");
+            svg.select("g#plot").append("text").style("font","20px serif")
+            .attr("transform","rotate(-90), translate(-380,-80)").text("P(topic | episode)");
+
+            function clickCircle(){
+                var t =d3.select(this).attr("data_topic");
+                var sel = all_data.filter(d=>d.topic_num==t).sort((a, b) => (a.value > b.value) ? -1 : 1).slice(0,5);
+                var sel_topics = sel.map(d=>d.episode);
+                xScale.domain(sel_topics);
+                xAxis = d3.axisBottom(xScale);
+                svg.select("g#plot").select("g#xAxis").call(xAxis);
+
+                svg.selectAll("circle").attr("fill","#fffffa").attr("stroke","#f93943");
+                d3.select(this).attr("fill","#f93943");
+
+                var rects = svg.select("g#plot").selectAll("rect").data(sel);
+                rects.enter().append("rect").attr("x",(d,i) => xScale(d.episode)).attr("y",600).attr("width",xScale.bandwidth())
+                .attr("fill","#134074").attr("stroke","#13315c").attr("stroke-width",5)
+                .merge(rects)
+                .transition().duration(2000)
+                .attr("x",(d,i) => xScale(d.episode))
+                .attr("y",(d,i) => yScale(d.value))
+                .attr("width",xScale.bandwidth())
+                .attr("height",(d,i) =>600 -  yScale(d.value));
+            }
+            
+            d3.csv("/data/topics_assignments.csv", rowConverter)
+            .then(function(data) {
+                all_data = data;
+
+                var data_max = d3.max(all_data.map(d=>d.value))
+                yScale.domain([0,data_max]);
+                yAxis = d3.axisLeft(yScale);
+                svg.select("g#plot").select("g#yAxis").call(yAxis);
+
+                var all_topics =data.map(function(d){
+                    return d.topic_num
+                });
+                var topics = all_topics.filter(onlyUnique).sort((a, b) => (a > b) ? 1 : -1);
+                
+                topics_arr = topics.map(function(d) {
+                    return [d,data.filter(dd => dd.topic_num==d)[0].top_terms ]
+                });
+                
+                var circles = svg.select("g#selectors").selectAll("circles").data(topics_arr);
+                circles.enter().append("circle").attr("fill","#fffffa").attr("stroke","#f93943").attr("stroke-width",3).attr("r",20)
+                .merge(circles)
+                .attr('cx',50).attr('cy',(d,i)=>25+(i*50)).attr("data_topic",d=>d[0])
+                .on("click",clickCircle);
+
+                var texts = svg.select("g#selectors").selectAll("text").data(topics_arr);
+                texts.enter().append("text").style("font","17px serif")
+                .merge(texts)
+                .attr('x',80).attr('y',(d,i)=>30+(i*50)).text(d=>d[0]+": "+d[1]);
+            });
+		</script>
+
+	</body>
+
+</html>
