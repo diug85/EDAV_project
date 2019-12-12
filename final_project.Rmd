@@ -138,7 +138,7 @@ head(dialogues)
 ```
 
 ## Data transformation
-Add word count to dialogues and episode name.
+Add word count to dialogues.
 
 ```{r echo=FALSE}
 dialogues <- dialogues %>%
