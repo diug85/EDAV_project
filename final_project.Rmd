@@ -415,8 +415,6 @@ head(assignments3)
 write.csv(assignments3,"docs/topics_assignments.csv")
 ```
 
-In the following link you can see the d3 tool: 
-
 
 ```{r include=FALSE}
 htmltools::includeHTML("https://bernacho.github.io/EDAV_project/d3_lda.html")
