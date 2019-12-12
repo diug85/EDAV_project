@@ -73,7 +73,7 @@
                 .attr("height",(d,i) =>600 -  yScale(d.value));
             }
             
-            d3.csv("/data/topics_assignments.csv", rowConverter)
+            d3.csv("https://bernacho.github.io/EDAV_project/topics_assignments.csv", rowConverter)
             .then(function(data) {
                 all_data = data;
 
