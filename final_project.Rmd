@@ -400,5 +400,5 @@ head(assignments2)
 write.csv(assignments2,"data/topics_assignments.csv")
 ```
 
-In the following link you can see the d3 tool: [d3TopicModellingTool](https://github.com/Bernacho/EDAV_project/blob/master/d3_lda.html){target="_blank"}  
+In the following link you can see the d3 tool: [d3TopicModellingTool](https://github.com/Bernacho/EDAV_project/blob/master/docs/d3_lda.html){target="_blank"}  
 
