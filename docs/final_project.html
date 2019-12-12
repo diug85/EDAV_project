@@ -350,6 +350,20 @@ paths_allowed(url)</code></pre>
 <p>We can see that the most prevalent (frequent) topic has words like “good”, “god”,“great”, “time”. This makes sense, this words are very frequent in the TV show and that is why they give very little information about the topic. That is why the coherence is 0.0.</p>
 <p>The other topics in the model have less prevalence but they are more coherent. If you are a fan of the show and if you read the list of top terms, we are sure you can remember episodes in which those terms were important.</p>
 <p>To find those important episodes we created a d3 tool. We wrote a csv file using theta in which, for each episode and topic we put the probability of that topic given the episode and the top terms of that topic.</p>
+<pre><code>##       id topic       value topic_num                          top_terms
+## 1 1 : 01   t_1 0.021260221         1 guys, married, night, moving, game
+## 2 1 : 01  t_14 0.004906205        14  job, money, audition, part, house
+## 3 1 : 01   t_6 0.075132275         6     date, guy, call, tonight, work
+## 4 1 : 01  t_15 0.001058201        15  emily, love, london, place, plane
+## 5 1 : 01  t_13 0.096296296        13  richard, dad, marcel, monkey, mom
+## 6 1 : 01   t_7 0.362770563         7       good, god, time, great, guys
+##                     name
+## 1 Monica Gets A Roommate
+## 2 Monica Gets A Roommate
+## 3 Monica Gets A Roommate
+## 4 Monica Gets A Roommate
+## 5 Monica Gets A Roommate
+## 6 Monica Gets A Roommate</code></pre>
 <p>In the following link you can see the d3 tool: <a href="https://bernacho.github.io/EDAV_project/d3_lda.html" target="_blank">d3TopicModellingTool</a></p>
 </div>
 </div>
