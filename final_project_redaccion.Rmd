@@ -55,6 +55,7 @@ library(extracat)
 library(GGally)
 library(htmltools)
 library(textmineR)
+library(ggthemes)
 ```
 
 \
@@ -430,7 +431,7 @@ dialogues %>%
     geom_bar(fill="#0d1fe6") +
     ggtitle("Main characters lines count") +
     labs(x="character",y="lines count") +
-    theme_bw()
+    theme_clean()
 ```
 
 We can see that Rachel is the character with more lines and Phoebe is the character with less lines.
@@ -445,7 +446,7 @@ dialogues %>%
     geom_col(fill="#0d1fe6") +
     ggtitle("Main characters words count") +
     labs(x="character",y="words count") +
-    theme_bw()
+    theme_clean()
 ```
 
 Rachel and Ross are again the characters that speak the most and Phoebe the one with less words.
@@ -461,7 +462,7 @@ dialogues %>%
      geom_histogram(bins=40, color = "#0d1fe6", fill = "lightblue", boundary = 0) +
      geom_density(color = "#bd02da") +
      facet_wrap(~character) +
-     theme_bw()
+     theme_clean()
 ```
 
 By looking into lines per episode distribution we find the following:
@@ -517,52 +518,52 @@ Now we fit a Latent Dirichlet allocation model in which we will try to fit 15 to
 * **phi**: Matrix with the probability of term per topic -> P(term | topic).
 
 ```{r echo=FALSE}
-set.seed(12345)
-model <- FitLdaModel(dtm = dtm,
-                     k = 15,
-                     iterations = 1000,
-                     burnin = 180,
-                     alpha = 0.1,
-                     beta = 0.05,
-                     optimize_alpha = TRUE,
-                     calc_likelihood = TRUE,
-                     calc_coherence = TRUE,
-                     calc_r2 = TRUE,
-                     cpus = 2)
-
-print("Theta:")
-head(model$theta[,1:5])
-print("Phi:")
-head(model$phi[,1:5])
+# set.seed(12345)
+# model <- FitLdaModel(dtm = dtm,
+#                      k = 15,
+#                      iterations = 1000,
+#                      burnin = 180,
+#                      alpha = 0.1,
+#                      beta = 0.05,
+#                      optimize_alpha = TRUE,
+#                      calc_likelihood = TRUE,
+#                      calc_coherence = TRUE,
+#                      calc_r2 = TRUE,
+#                      cpus = 2)
+# 
+# print("Theta:")
+# head(model$theta[,1:5])
+# print("Phi:")
+# head(model$phi[,1:5])
 ```
 
 Now the 15 topics have been created. To know about the topics quality we look into the **topic coherence**, this is a measure of how associated are words in a topic.
 
 ```{r echo=FALSE}
-summary(model$coherence)
-
-hist(model$coherence,
-     col= "#0d1fe6",
-     main = "Histogram of topic coherence")
+# summary(model$coherence)
+# 
+# hist(model$coherence,
+#      col= "#0d1fe6",
+#      main = "Histogram of topic coherence")
 ```
 
 We will use phi to get the top 5 terms per topic.
 
 ```{r echo=FALSE}
-model$top_terms <- GetTopTerms(phi = model$phi, M = 5)
-t(model$top_terms)
+# model$top_terms <- GetTopTerms(phi = model$phi, M = 5)
+# t(model$top_terms)
 ```
 
 The next step is to compute the topic prevalence using theta. Topic prevalence indicate the most frequent topics in the TV show.
 
 ```{r echo=FALSE}
-model$prevalence <- colSums(model$theta) / sum(model$theta) * 100
-
-ggplot() +
-  geom_point(aes(x=model$prevalence,y=model$alpha), color = "#0d1fe6")+
-    ggtitle("Topic prevalence") +
-    labs(x="prevalence",y="alpha") +
-    theme_bw()
+# model$prevalence <- colSums(model$theta) / sum(model$theta) * 100
+# 
+# ggplot() +
+#   geom_point(aes(x=model$prevalence,y=model$alpha), color = "#0d1fe6")+
+#     ggtitle("Topic prevalence") +
+#     labs(x="prevalence",y="alpha") +
+#     theme_clean()
 
 ```
 
@@ -570,15 +571,15 @@ Finally, we get a summary for the complete LDA model.
 
 ```{r echo=FALSE}
 
-model$summary <- data.frame(topic = rownames(model$phi),
-                            coherence = round(model$coherence, 3),
-                            prevalence = round(model$prevalence,3),
-                            top_terms = apply(model$top_terms, 2, function(x){
-                              paste(x, collapse = ", ")
-                            }),
-                            stringsAsFactors = FALSE)
-
-model$summary[ order(model$summary$prevalence, decreasing = TRUE) , ]
+# model$summary <- data.frame(topic = rownames(model$phi),
+#                             coherence = round(model$coherence, 3),
+#                             prevalence = round(model$prevalence,3),
+#                             top_terms = apply(model$top_terms, 2, function(x){
+#                               paste(x, collapse = ", ")
+#                             }),
+#                             stringsAsFactors = FALSE)
+# 
+# model$summary[ order(model$summary$prevalence, decreasing = TRUE) , ]
 ```
 
 We can see that the most prevalent (frequent) topic has words like "good", "god","great", "time". This makes sense, this words are very frequent in the TV show and that is why they give very little information about the topic. That is why the coherence is 0.0.
@@ -588,19 +589,19 @@ The other topics in the model have less prevalence but they are more coherent. I
 To find those important episodes we created a d3 tool. We wrote a csv file using theta in which, for each episode and topic we put the probability of that topic given the episode and the top terms of that topic.
 
 ```{r echo=FALSE}
-assignments <- rownames_to_column(as.data.frame(t(model$theta)),var="rowID") %>%
-  gather(key="topic",value="value",-rowID) %>%
-  rename(topic2=topic) %>%
-  rename(rowID2=rowID) %>%
-  rename(topic=rowID2) %>%
-  rename(id=topic2) %>%
-  mutate(topic_num=  as.integer(substr(topic,3,1000000)) )
-
-assignments2 <- merge(x = assignments, y = model$summary[,c("topic","top_terms")], by = "topic", all.x = TRUE)
-assignments3 <- merge(x = assignments2, y = episodes_df[,c("id","name")], by = "id", all.x = TRUE)
-
-head(assignments3)
-write.csv(assignments3,"docs/topics_assignments.csv")
+# assignments <- rownames_to_column(as.data.frame(t(model$theta)),var="rowID") %>%
+#   gather(key="topic",value="value",-rowID) %>%
+#   rename(topic2=topic) %>%
+#   rename(rowID2=rowID) %>%
+#   rename(topic=rowID2) %>%
+#   rename(id=topic2) %>%
+#   mutate(topic_num=  as.integer(substr(topic,3,1000000)) )
+# 
+# assignments2 <- merge(x = assignments, y = model$summary[,c("topic","top_terms")], by = "topic", all.x = TRUE)
+# assignments3 <- merge(x = assignments2, y = episodes_df[,c("id","name")], by = "id", all.x = TRUE)
+# 
+# head(assignments3)
+# write.csv(assignments3,"docs/topics_assignments.csv")
 ```
 
 
@@ -643,7 +644,12 @@ episode <- dfepisode %>%
   left_join(dfratings, by = 'tconst') %>%
   arrange(as.numeric(as.character(seasonNumber)), as.numeric(as.character(episodeNumber)))
 
-ggplot(episode, aes(x=factor(episodeNumber, levels = 1:25), averageRating)) + geom_boxplot()
+ggplot(episode, aes(x=factor(episodeNumber, levels = 1:25), averageRating)) + 
+  geom_boxplot() + 
+  labs(title = 'Average Ratings') +
+  xlab('Episode') + 
+  ylab('Rating') + 
+  theme_clean()
 ```
 
  The boxplots not only help to confirm in a cleaner graph the behaviour observed previously, but also provides additional insigths like:
@@ -658,6 +664,103 @@ ggplot(episode, aes(x=factor(episodeNumber, levels = 1:25), averageRating)) + ge
     - Season 6, episode 20: "Mac and Cheese" happens in the 19-21 episode valley
 
 A likely explanation for the behaviour on the last 7 episodes of all seasons is that writers may have prepared some intricated plot (an not necessarily amusing) to be climaxed on the lasts episodes.
+
+A feature interesting to explore y how the number of viewers and voters relate with the Average Rating. 
+```{r echo=FALSE}
+# Main and secondary characters
+load("./data/DF_kmeans.RData")
+characters_main <- DF_kmeans %>%
+  filter(Cluster==1) %>%
+  select(character) %>%
+  unique()
+
+characters_sec <- DF_kmeans %>%
+  filter(Cluster==3) %>%
+  select(character) %>%
+  unique()
+
+# load additional episode detail: dates and viewers
+episode_xtra <- read_csv('data/episode_extras.csv')
+episode_xtra <- episode %>% left_join(episode_xtra, by='key') 
+# viewers trend (boxplot) 
+ggpairs(episode_xtra, c(6,7,11)) 
+```
+
+The scatterplot matrix above helps to see that the better the episode is, the likelier that people will invest their time to rate it. Specifically this happens with an exponential relationship. In contrast, the the number of viewers show a small positive linear correlation.
+
+This TV show is commonly perceived as having constantly increasing ratings and number of followers. However we can show that it is not completely true, at least while it was aired on TV before streaming services like Netflix became the big players they are today.
+
+The following boxplot graph shows that the hype for the show and the [main actor's salaries](https://www.quora.com/What-would-be-the-salaries-of-the-characters-on-F-R-I-E-N-D-S) were not backed by the number of people following the weekly episodes.
+
+Clearly, the most successfull season, when the actors were paid in the range from \$20,000 to \$40,000 per episode, was season 2 with about 50% (approx) more viewers than Season 10 when they were paid \$1 million per episode.
+
+```{r echo=FALSE}
+ggplot(episode_xtra %>% filter(viewers<50), aes(seasonNumber, viewers)) + 
+  geom_boxplot() + 
+  labs(title = 'Number of viewers (in millions)') +
+  xlab('Season') + 
+  ylab('Viewers') + 
+  theme_clean()
+```
+
+Continuing with the numnber of viewers. When the last episode of a season is considered a good one, it is expected that people will watch the begining of the next one and then loose stamina (until the last episodes of the curren season). 
+
+An additional insight: episodes 19-22 usually were aired around ____________, which explains the low number of fans watching. Here the graph.
+
+```{r echo=FALSE}
+ggplot(episode_xtra %>% filter(viewers<50), aes(factor(episodeNumber), viewers)) + 
+    geom_boxplot() + 
+  labs(title = 'Number of viewers (in millions)') +
+  xlab('Episode') + 
+  ylab('Viewers') + 
+  theme_clean()
+```
+
+Probably the most ubiquitous discussion among Friends fans is which of the main characters is the best. Here we are going to define *best* as the characther that drives the rating with more strength. To do so we will try to find if there is a relation between the number of lines of each character to the rating for each episode, as well as the interactions among all of the characters.
+
+```{r echo=FALSE}
+# filter line counts by character
+load('./data/DF_Character_Episode.RData')
+lines_main <- DF_Character_Episode %>% 
+  filter(character %in% characters_main$character)
+
+aggregate_main <- lines_main %>% 
+  spread(character, Total_lines, fill=0) %>% 
+  group_by(episode_id, Avg_Rating) %>%
+  summarise(CHANDLER = sum(CHANDLER),
+            JOEY = sum(JOEY),
+            MONICA = sum(MONICA),
+            PHOEBE = sum(PHOEBE),
+            RACHEL = sum(RACHEL),
+            ROSS = sum(ROSS))
+aggregate_main %>% ggpairs(2:8, ) 
+```
+
+There is no surprise that Monica and Chandler are the characters with most interactions between them since they were a couple for a longer time than Ross and Rachel (second place).
+
+As to the rating, we can see that individual participations don't hold a high correlation with the rating of an episode. However, we should notice that all of them are positive and that Ross is the characther with the highest one, which aligns with the previous analysis of interactions.
+
+To test how statistically significant are these results we ran correlation hypothesis tests. In consideration that the relation will not necessarily linear we decided to run both parametric (Pearson) and not-parametric (Spearman) hypothesis test for $H_0=\rho\let0$ vs $H_1=\rho>0$ that resulted in the following *p-values*:
+
+```{r echo=FALSE}
+test_matrix <- function(data){
+  df <- data.frame()
+  x <- data$Avg_Rating
+  characters <- c('CHANDLER','JOEY','MONICA','PHOEBE','RACHEL','ROSS')
+  i <- 1
+  for(c in characters){
+    y <- as.matrix(data[,c])
+    df[c,'Spearman'] <- cor.test(x, y, alternative = 'greater', method = 'spearman')$p.value
+    df[c,'Pearson'] <- cor.test(x, y, alternative = 'greater', method = 'pearson')$p.value
+  }
+  df
+}
+p_values <-test_matrix(aggregate_main)
+library(knitr)
+kable(p_values, caption = 'p-values')
+```
+
+- Ross
 
 ## **VI. Interactive component**
 
