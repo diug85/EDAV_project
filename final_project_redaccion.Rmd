@@ -764,7 +764,7 @@ assignments2 <- merge(x = assignments, y = model$summary[,c("topic","top_terms")
 assignments3 <- merge(x = assignments2, y = episodes_df[,c("id","name")], by = "id", all.x = TRUE)
 
 head(assignments3)
-write.csv(assignments3,"docs/topics_assignments.csv")
+write.csv(assignments3,"data/topics_assignments.csv")
 ```
 
 
