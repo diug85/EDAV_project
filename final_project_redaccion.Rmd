@@ -769,7 +769,7 @@ write.csv(assignments3,"docs/topics_assignments.csv")
 
 
 ```{r echo=FALSE}
-htmltools::includeHTML("https://bernacho.github.io/EDAV_project/d3_lda.html")
+htmltools::includeHTML("./docs/d3_lda.html")
 ```
 
 ### ***Features driving the rating***
