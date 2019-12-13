@@ -85,7 +85,7 @@ Friends received positive reviews throughout its run and became one of the most 
 
 ### ***ii) Motivation & Questions***
 
-As teenagers at the beginning of the century, we were heavily influenced by the Friends phenomenon and became huge fans of the sitcom. We decided to work on this project to challenge through a data analysis our preconceptions of the show and discover hiden insights. The questions that guide our quantitative assessment are the following:
+As teenagers at the beginning of the century, we were heavily influenced by the Friends phenomenon and became huge fans of the sitcom. We decided to work on this project to challenge through a data analysis our preconceptions of the show and discover hidden insights. The questions that guide our quantitative assessment are the following:
 
 * Can we categorize by importance all the appearing characters of the sitcom? This question at first glance could seem simple but under the assumption that we do not possess any previous knowledge of the sitcom and considering that over the ten seasons more than 800 characters appeared in the show, the analysis represents a challenge.
 
@@ -113,7 +113,7 @@ We have use the next R libraries for the development of this project :
 
 The primary data sources that we used for our project and that we consider that have an adequate quality are:
 
-   * Transcripts: For the transcripts, we used an open resource built by fans of the sitcom and that has been compiled in a Github repository. The repository contains all the dialogues of the characters for the 231 episodes of the tv-show. The data is organized in Html documents.. The data can be accessed via: https://fangj.github.io/friends/. If you want to see how de transcripts are originally presented [please click here](https://fangj.github.io/friends/season/0101.html).
+   * Transcripts: For the transcripts, we used an open resource built by fans of the sitcom and that has been compiled in a Git hub repository. The repository contains all the dialogues of the characters for the 231 episodes of the tv-show. The data is organized in Html documents.. The data can be accessed via: https://fangj.github.io/friends/. If you want to see how the transcripts are originally presented [please click here](https://fangj.github.io/friends/season/0101.html).
 
    * Ratings: For the ratings, we have used the IMDb Datasets which is available for access to customers for personal and non-commercial use.  The data is structured in seven compressed CSV files that contain general information of the show (genre, start year, end year, episode duration, etc.), and specific information of each episode (title, rating, characters, crew, etc.). A relevant characteristic of the database is that it is refreshed daily. We have made the consultation of the Data on November 10, 20199. The data can be accessed via: https://datasets.imdbws.com/
 
@@ -122,19 +122,19 @@ The primary data sources that we used for our project and that we consider that 
 
    * IMDb Dataset:
 
-      + The first obstacle that we faced with the IMDb datasets was the size of the data sets, some of them have millions of rows with the information of Tv-series, shorts, movies, documentaries, and other entertainment formats. It was impossible to store them in our Github.
+      + The first obstacle that we faced with the IMDb datasets was the size of the data sets, some of them have millions of rows with the information of Tv-series, shorts, movies, documentaries, and other entertainment formats. It was impossible to store them in our Git hub.
 
       + The second obstacle was to track, which was the data corresponding to our case of study. For example, we searched in the dataset only by name 'Friends' we found 178 results of TV-series or movies called 'Friends'. It was necessary to understand and do some research on the years of beginning and end of the series to refine the search.
 
       +  Another obstacle was that the ID for TV-series across the seven IMDb datasets was not uniform. For example, in the dataset corresponding to the titles of the TV-series, the ID to identify the show is named "tconst", while on the dataset that where we can get the ID of the episode the name correspond to the ID of the episode, and the ID for the TV-series is called "parentTconst". These errors were identified through the exploration of the datasets.
 
-   * Transcipt Dataset:
+   * Transcript Dataset:
 
       +  The main obstacle of the dialogue dataset is that not all the HTML files share the same format. We have overcome this difficulty by incorporating special cases in our scraping code that took into account the special cases that we have detected.
 
       + The second difficulty that we have experienced in the dialogue dataset is the cleaning of the dialogues itself. We tried to standardize as most as possible the content of the dialogues, by identifying different names for the same character, common typos and regular expressions that could hinder our analysis.
 
-    You can follow the scraping code that lead to the folowing data frame by looking into "frieds.Rmd" file in the Git Hub repository.
+    You can follow the scraping code that lead to the following data frame by looking into "friends.Rmd" file in the Git Hub repository.
 
 ```{r eval=FALSE}
 url <- "https://fangj.github.io/friends/"
@@ -301,7 +301,7 @@ dialogues <- dialogues %>%
   mutate(episode = as.integer(trimws(str_sub(episode, start=2))))
 ```
 
-Now we have to correct some character names that had typos and we removed some lines that the scraping code catched that are not dialogues.
+Now we have to correct some character names that had typos and we removed some lines that the scraping code catches that are not dialogues.
 
 ```{r echo=FALSE}
 dialogues <- dialogues %>%
@@ -349,7 +349,7 @@ str(dfratings)
 str(dfepisode)
 ```
 
-   * Step 2: Join the 3 data frames of IMDb to create an intermediate dataframe.Notice that this dat frame will contain the average rating of IMDb per episode. Furthermore, we created a suitable key to join this dataframe with the dataframe of that contain the dialogues.
+   * Step 2: Join the 3 data frames of IMDb to create an intermediate dataframe.Notice that this data frame will contain the average rating of IMDb per episode. Furthermore, we created a suitable key to join this dataframe with the dataframe of that contain the dialogues.
 
 ```{r include=FALSE}
 
@@ -375,7 +375,7 @@ IMDbRatings=IMDbRatings %>%
 str(IMDbRatings)
 ```
 
-   * Step 3: With a Left-Join we created the Metabase that had as primary dataframe the dialogues and as secondary dataframe the ratimgs from IMDb.
+   * Step 3: With a Left-Join we created the Metabase that had as primary dataframe the dialogues and as secondary dataframe the ratings from IMDb.
 
 ```{r include=FALSE}
 dialogues=inner_join(dialogues,IMDbRatings[,c(1,4,7,8,9)], by= c("episode_id"="episode_id"))
@@ -417,7 +417,7 @@ dialogues <- dialogues %>%
 
 * The first big question that we want to explore is the categorization by importance by the participation of the characters? As we have previously mentioned this question seems to be naive, however, if we assume that we do not have any previous knowledge of the sitcom and considering that over the ten seasons more than 800 characters appeared in the show, the analysis is far from being a naive exercise.
 
-To answer this question we have used the unsupervised Machine Learning technique of Kmean. Its objective s to label the data based on certain characteristics, in this case, we used the number of words, lines, and scenes. To accomplish this task we have used the libraries  [`cluster`](https://www.rdocumentation.org/packages/cluster/versions/2.1.0){target="_blank"}, and [`base`](https://www.rdocumentation.org/packages/base/versions/3.6.2){target="_blank"}. Moreover, we have established established a priori the desired number of labels tha we wanted for our data, for practicity terms we decides to set the size of the groups or kmeans.
+To answer this question we have used the unsupervised Machine Learning technique of Kmean. Its objective s to label the data based on certain characteristics, in this case, we used the number of words, lines, and scenes. To accomplish this task we have used the libraries  [`cluster`](https://www.rdocumentation.org/packages/cluster/versions/2.1.0){target="_blank"}, and [`base`](https://www.rdocumentation.org/packages/base/versions/3.6.2){target="_blank"}. Moreover, we have established established a priori the desired number of labels that we wanted for our data, for practicality terms we decides to set the size of the groups or kmeans.
 
 ```{r include=FALSE}
 
@@ -460,7 +460,7 @@ x=filter(DF_kmeans, Cluster== Centers[1,4] | Cluster== Centers[2,4] )
 ```
 
 From the kmean analysis obtain the following separation of characters:
-  + *Main Characters*: As expected Rachel, Monica, Phoebe, Joey, Chandler and Ross constitue one group tha has that on average has 1,680 scenes, 8469 lines and 	87,498 words.
+  + *Main Characters*: As expected Rachel, Monica, Phoebe, Joey, Chandler and Ross constitute one group that has that on average has 1,680 scenes, 8469 lines and 	87,498 words.
   + *Secondary Characters*: This group is composed by 33 characters, most of them are recurrent characters and guest stars. The average character in this group has on average 35 scenes, 133 lines and 	1,228 words.
   
   + *Other Characters*: composed for those characters that are incidental or did not have a relevant importance in the sitcom. The average character in this group has 2 scenes, 7 lines and 64 words.
@@ -759,14 +759,11 @@ head(assignments3)
 write.csv(assignments3,"data/topics_assignments.csv")
 ```
 
-
-```{r echo=FALSE}
-htmltools::includeHTML("./docs/d3_lda.html")
-```
+We built an interactive tool where the user can search for the episodes that most relate to each one of the 15 topics. To access the tool click [here](https://bernacho.github.io/EDAV_project/d3_lda.html).
 
 ### ***Features driving the rating***
 
-To look for the main features that drive the rating up or down, it is useful to start by observing its tempral structure. The following graph is **interactive**:
+To look for the main features that drive the rating up or down, it is useful to start by observing its temporal structure. The following graph is **interactive**:
 
 <font color="#960c0c"><i>Click on the season title to (de)activate each series</i></font>
 
@@ -774,9 +771,9 @@ To look for the main features that drive the rating up or down, it is useful to 
 htmltools::includeHTML('./docs/rating_per_season.html')
 ```
 
-  - There is a generalized behaviour among the 10 seasons:
+  - There is a generalized behavior among the 10 seasons:
     - Episode 1 has high rating and immediately falls into a valley around 8.4
-    - Through episodes 6-9 theres usually a peak followed of another (larger) valley
+    - Through episodes 6-9 there is usually a peak followed of another (larger) valley
     - Finally, the last episode has high rating
 
 Next, to create a cleaner view of the data, we create a boxplot
@@ -802,7 +799,7 @@ episode <- dfepisode %>%
 ggplot(episode, aes(x=factor(episodeNumber, levels = 1:25), averageRating)) + geom_boxplot()
 ```
 
- The boxplots not only help to confirm in a cleaner graph the behaviour observed previously, but also provides additional insigths like:
+ The boxplots not only help to confirm in a cleaner graph the behavior observed previously, but also provides additional insights like:
  
   - The perceived quality (in terms of rating) of episodes 7 to 9 varies a lot from season to season.
   - The 10th episode for all season has low rating surrounding 8.2. These were traditionally aired through the holidays season in December.
@@ -813,7 +810,7 @@ ggplot(episode, aes(x=factor(episodeNumber, levels = 1:25), averageRating)) + ge
     - Season 10, episode 10: "Christmas in Tulsa"
     - Season 6, episode 20: "Mac and Cheese" happens in the 19-21 episode valley
 
-A likely explanation for the behaviour on the last 7 episodes of all seasons is that writers may have prepared some intricated plot (an not necessarily amusing) to be climaxed on the lasts episodes.
+A likely explanation for the behavior on the last 7 episodes of all seasons is that writers may have prepared some intricate plot (an not necessarily amusing) to be climaxed on the lasts episodes.
 
 ## **VI. Interactive component**
 
@@ -827,9 +824,9 @@ We included four elements that are interactive:
 
 ## **VII. Conclusion**
 
-* Rachel and Ross are the characters with most lines, this suggests that most of the stories go arround them.
+* Rachel and Ross are the characters with most lines, this suggests that most of the stories go around them.
 * Using K-means we could find 3 clear groups of characters, that match with the roles that the character play in the TV show.
 * Using VisNetwork we could build a tool that allows the user to explore the interaction between characters, depending on characters that shared scenes.
-* The most frequent terms found in the topic modelling tell us that Friends is a TV show with a very simple language. Words like "Good", "Great", "alright" and "guys" are arround the most common.
+* The most frequent terms found in the topic modelling tell us that Friends is a TV show with a very simple language. Words like "Good", "Great", "alright" and "guys" are around the most common.
 * Topic modelling results are not clear, but we do can tag some episodes in four categories "weddings", "baby-doctor", "party-thanksgiving" and "work".
 
