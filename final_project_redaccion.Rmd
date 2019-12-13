@@ -413,7 +413,7 @@ dialogues <- dialogues %>%
 
 ## **V. Results**
 
-### ***i) Labeling the main and secondary characters and its participation***
+### ***Labeling the main and secondary characters and its participation***
 
 
 
@@ -470,9 +470,9 @@ By looking into lines per episode distribution we find the following:
 * Chandler and Ross have large right tails, we infer that those characters have episodes in which they speak a lot.
 * Rachel and Ross have wider distributions.
 
-### ***ii) Unraveling the character interactions ***
+### ***Unraveling the character interactions ***
 
-### ***iii) Topic modelling using LDA***
+### ***Topic modelling using LDA***
 
 For topic modelling we will use the package **textmineR**. We will try to find the topic for each episode. To do so we will create a document for each episode, so we have to group lines by episode_id.
 
@@ -495,7 +495,7 @@ dtm <- CreateDtm(dialogues_by_episode$lines,
                                   tolower(main_characters),
                                   c("yeah","uh","ah","ya","umm","ow","hey","um","huh",
                                     "uhm","gonna","wanna","ohh","ooh","mr","ahh","whoa",
-                                    "la","ha","ugh","woah")),
+                                    "la","ha","ugh","woah","alright")),
                  ngram_window = c(1, 2))
 dtm <- dtm[,colSums(dtm) > 2]
 ```
@@ -609,14 +609,23 @@ write.csv(assignments3,"docs/topics_assignments.csv")
 htmltools::includeHTML("https://bernacho.github.io/EDAV_project/d3_lda.html")
 ```
 
-### ***iv) Rating contribution per character***
+### ***Rating contribution per character***
 
 
 ## **VI. Interactive component**
 
-### ***i) D3***
+We included four elements that are interactive:
 
-### ***ii) Shiny***
+* **Zoom scatterplot** using Shinny.
+* **Inraction network** using VisNetwork.
+* **Bar plot for topics per episode** using d3.
+* **Rating timeseries per season** using d3.
 
 
 ## **VII. Conclusion**
+
+* Rachel and Ross are the characters with most lines, this suggests that most of the stories go arround them.
+* Using K-means we could find 3 clear groups of characters, that match with the roles that the character play in the TV show.
+* Using VisNetwork we could build a tool that allows the user to explore the interaction between characters, depending on characters that shared scenes.
+* The most frequent terms found in the topic modelling tell us that Friends is a TV show with a very simple language. Words like "Good", "Great", "alright" and "guys" are arround the most common.
+* Topic modelling results are not clear, but we do can tag some episodes in four categories "weddings", "baby-doctor", "party-thanksgiving" and "work".
