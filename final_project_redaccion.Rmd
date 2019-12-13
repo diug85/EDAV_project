@@ -52,6 +52,7 @@ library(tidyverse)
 library(Hmisc)
 library(textmineR)
 library(extracat)
+library(GGally)
 ```
 
 \
@@ -104,7 +105,9 @@ The primary data sources that we used for our project and that we consider that 
 
    * Transcripts: For the transcripts, we used an open resource built by fans of the sitcom and that has been compiled in a Github repository. The repository contains all the dialogues of the characters for the 231 episodes of the tv-show. The data is organized in Html documents.. The data can be accessed via: https://fangj.github.io/friends/. If you want to see how de transcripts are originally presented [please click here](https://fangj.github.io/friends/season/0101.html).
 
-   * Ratings: For the ratings, we have used the IMDb Datasets which is available for access to customers for personal and non-commercial use.  The data is structured in seven compressed CSV files that contain general information of the show (genre, start year, end year, episode duration, etc.), and specific information of each episode (title, rating, characters, crew, etc.). A relevant characteristic of the database is that it is refreshed daily. We have made the consultation of the Data on November 10, 20199. The data can be accessed via: https://datasets.imdbws.com/
+   * Ratings: For the ratings, we have used the IMDb Datasets which is available for access to customers for personal and non-commercial use.  The data is structured in seven compressed CSV files that contain general information of the show (genre, start year, end year, episode duration, etc.), and specific information of each episode (title, rating, characters, crew, etc.). A relevant characteristic of the database is that it is refreshed daily. We have made the consultation of the Data on November 10, 2019. The data can be accessed via: https://datasets.imdbws.com/.
+   
+   * Additional data: to complement our analysis we added the date on which each episode was aired as well as the number of viewers. This data was manually curated from Wikpedia ([link](https://fangj.github.io/friends/season/0101.html).)
 
 
 ### ***ii) Data quality and challenges***
@@ -155,7 +158,7 @@ read_dialogues <- function(link,ep_id) {
   html <- read_html(link)
   #### Special case for episode 9 : 15
   if (ep_id == "9 : 15"){
-    df_1 <- read.csv("C:/Users/mamun/Documents/EDVA Fall 2019/Info Project/episode_9_15.csv")
+    df_1 <- read.csv("./data/episode_9_15.csv")
     df_2 <- df_1 %>%
       mutate(rows2= trimws(str_replace(rows,"\\(([^\\)]+)\\)","") )) %>%
       mutate(is_scene = ifelse(substr(rows2,0,1)=="[",1,0))
@@ -294,9 +297,9 @@ str(dialogues)
       + Step 1.2: Extract, decompress and save as dataframes. Tha 3 tables of IMDb that we have used in our analysis are those that allowed us to extract the information related to the rating of each episode.
       
 ```{r include=FALSE}
-load(file = "C:/Users/mamun/Documents/EDVA Fall 2019/Info Project/dfratings.RData")
-load(file = "C:/Users/mamun/Documents/EDVA Fall 2019/Info Project/dfTitle.RData")
-load(file = "C:/Users/mamun/Documents/EDVA Fall 2019/Info Project/dfepisode.RData")
+load(file = "./data/dfratings.RData")
+load(file = "./source/dfTitle.RData")
+load(file = "./data/dfepisode.RData")
 ```
 *title.ratings.tsv.gz*
 ```{r echo=FALSE}
@@ -374,9 +377,33 @@ For the Network analysis a special data structure is required. We established th
 
 ### ***iii) Extracting the main topics***
 
-### ***iv) Rating contribution per character***
+### ***iv) Features driving the rating***
 
+To look for the main features that drive the rating up or down, it is useful to start by observing its tempral structure. The following graph is **interactive**:
 
+<font color="#960c0c"><i>Click on the season title to (de)activate each series</i></font>
+
+```{r echo=FALSE}
+htmltools::includeHTML('./docs/rating_per_season.html')
+```
+  - There is a generalized behaviour among the 10 seasons: 
+    - Episode 1 has high rating and immediately falls into a valley around 8.4
+    - Through episodes 6-9 theres usually a peak followed of another (larger) valley
+    - Finally, the last episode has high rating
+    
+Next, to create a cleaner view of the data, we create a boxplot 
+```{r echo=FALSE}
+episode <- dfepisode %>% 
+  filter(parentTconst=='tt0108778')  %>%
+  mutate(key = key(seasonNumber, episodeNumber),
+         episodeNumber = as.integer(as.character(episodeNumber)),
+         seasonNumber = factor(seasonNumber, levels = 1:10)) %>%
+  left_join(dfratings, by = 'tconst') %>%
+  arrange(as.numeric(as.character(seasonNumber)), as.numeric(as.character(episodeNumber)))
+
+ggplot(episode, aes(x=factor(episodeNumber, levels = 1:25), averageRating)) + geom_boxplot()
+```
+ The boxplots not only help to confirm in a cleaner graph the behaviour observed
 ## **VI. Interactive component**
 
 ### ***i) D3***
