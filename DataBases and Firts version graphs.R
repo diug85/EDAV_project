@@ -44,7 +44,7 @@ read_dialogues <- function(link,ep_id) {
   html <- read_html(link)
   #### Special case for episode 9 : 15
   if (ep_id == "9 : 15"){
-    df_1 <- read.csv("episode_9_15.csv")
+    df_1 <- read.csv("./data/episode_9_15.csv")
     df_2 <- df_1 %>%
       mutate(rows2= trimws(str_replace(rows,"\\(([^\\)]+)\\)","") )) %>%
       mutate(is_scene = ifelse(substr(rows2,0,1)=="[",1,0))
@@ -168,9 +168,9 @@ rm(df2, episodes_list, df, n, html, i, link, long_name, url)
 ##### Con esto cualquiera puede regenerar las BD que deberia ser ya nuestra base principal ya definitiva
 
 
-load(file = "C:/Users/mamun/Documents/EDVA Fall 2019/Info Project/dfratings.RData")
-load(file = "C:/Users/mamun/Documents/EDVA Fall 2019/Info Project/dfTitle.RData")
-load(file = "C:/Users/mamun/Documents/EDVA Fall 2019/Info Project/dfepisode.RData")
+load(file = "./data/dfratings.RData")
+load(file = "./data/dfTitle.RData") # <--- este archivo no cabe en GitHub
+load(file = "./data/dfepisode.RData")
 
 IMDbFriends=filter(dfTitle, primaryTitle=='Friends' & startYear=='1994' & endYear=='2004') # Friends vector identifier in IMDBd
 
@@ -239,7 +239,7 @@ DF_Character=dialogues%>%
   arrange(-Total_scene ,-Total_lines, -Total_words)
 
 ###################################################################
-###################5. K-means ###################################
+###########################  5. K-means  ##########################
 ###################################################################
 
 library(cluster)

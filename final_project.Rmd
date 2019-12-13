@@ -416,6 +416,6 @@ write.csv(assignments3,"docs/topics_assignments.csv")
 ```
 
 
-```{r include=FALSE}
+```{r echo=FALSE}
 htmltools::includeHTML("https://bernacho.github.io/EDAV_project/d3_lda.html")
 ```
