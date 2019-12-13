@@ -200,12 +200,6 @@ read_dialogues <- function(link,ep_id) {
     mutate(character=ifelse(is.na(split),"",toupper(trimws(substr(rows2,0,split - 1 ))))) %>%
     mutate(line=ifelse(is.na(split),"",trimws(substr(rows2,split + 1,1000000)))) %>%
     mutate(episode_id = ep_id) %>%
-<<<<<<< HEAD
-    mutate(line=trimws(str_remove(line,"\\(([^\\)]+)\\)")) ) %>%
-    filter(character != "WRITTEN BY")
-
-
-=======
     mutate(line=trimws(str_replace_all(line,"\\(([^\\)]+)\\)"," ")) ) %>%
     mutate(line=trimws(str_replace_all(line,"[\r\n]"," ")) ) %>%
     mutate(line=trimws(str_replace_all(line,'[\"]'," ")) ) %>%
@@ -213,7 +207,6 @@ read_dialogues <- function(link,ep_id) {
     filter(character != "WRITTEN BY")
 
 
->>>>>>> ef8e5322a3b53246f6129976ce3ebc1ddd98fb81
   df_4 <- data.frame(df_3, scene=cumsum(df_3$is_scene))
 
   df_5 <- df_4 %>%
@@ -232,8 +225,6 @@ read_dialogues <- function(link,ep_id) {
 dialogues <- data.frame()
 for (i in 1:nrow(df)) {
   n <- read_dialogues(df[i,"link"],df[i,"id"])
-  # print(i)
-  # print(nrow(n))
   dialogues <- rbind(dialogues, n)
 }
 head(dialogues)
@@ -278,11 +269,6 @@ dialogues <- dialogues %>%
   mutate(episode_id = if_else(episode_id == "6 : 15-16" & scene >= 15,"6 : 16",episode_id)) %>%
   mutate(episode_id = if_else(episode_id == "9 : 23-24" & scene < 16,"9 : 23",episode_id)) %>%
   mutate(episode_id = if_else(episode_id == "9 : 23-24" & scene >= 16,"9 : 24",episode_id)) %>%
-<<<<<<< HEAD
-  mutate(episode_id = if_else(episode_id == "10 : 17-18" ,"10 : 17",episode_id))
-
-
-=======
   mutate(episode_id = if_else(episode_id == "10 : 17-18" ,"10 : 17",episode_id))
 
 episodes_df <- rbind(episodes_df,c("","","2","12","The Superbowl (part 1)","2 : 12"))
@@ -300,7 +286,6 @@ episodes_df <- rbind(episodes_df,c("","","10","17","The Last One","10 : 17"))
 For more clarity, we will add season and episode columns.
 
 ```{r echo=FALSE}
->>>>>>> ef8e5322a3b53246f6129976ce3ebc1ddd98fb81
 dialogues <- dialogues %>%
   mutate(season =  trimws(str_extract(episode_id,".+\\:"))) %>%
   mutate(episode =trimws(str_extract(episode_id,"\\:.+")))
@@ -632,13 +617,24 @@ To look for the main features that drive the rating up or down, it is useful to 
 ```{r echo=FALSE}
 htmltools::includeHTML('./docs/rating_per_season.html')
 ```
+
   - There is a generalized behaviour among the 10 seasons:
     - Episode 1 has high rating and immediately falls into a valley around 8.4
     - Through episodes 6-9 theres usually a peak followed of another (larger) valley
     - Finally, the last episode has high rating
 
 Next, to create a cleaner view of the data, we create a boxplot
+
 ```{r echo=FALSE}
+load('./data/dfepisode.RData')
+load('./data/dfratings.RData')
+
+key <- function(season, episode){
+  # s <- toString(season)
+  e <- str_pad(episode, 2, 'left', 0)
+  paste(season, e, sep=' : ')
+}
+
 episode <- dfepisode %>%
   filter(parentTconst=='tt0108778')  %>%
   mutate(key = key(seasonNumber, episodeNumber),
@@ -649,12 +645,25 @@ episode <- dfepisode %>%
 
 ggplot(episode, aes(x=factor(episodeNumber, levels = 1:25), averageRating)) + geom_boxplot()
 ```
- The boxplots not only help to confirm in a cleaner graph the behaviour observed
+
+ The boxplots not only help to confirm in a cleaner graph the behaviour observed previously, but also provides additional insigths like:
+ 
+  - The perceived quality (in terms of rating) of episodes 7 to 9 varies a lot from season to season.
+  - The 10th episode for all season has low rating surrounding 8.2. These were traditionally aired through the holidays season in December.
+  - Two highest ratings:
+    - Special episode after the 1996 Super Bowl
+    - Final episode (Season 10, episode 18)
+  - Two lowest ratings ():
+    - Season 10, episode 10: "Christmas in Tulsa"
+    - Season 6, episode 20: "Mac and Cheese" happens in the 19-21 episode valley
+
+A likely explanation for the behaviour on the last 7 episodes of all seasons is that writers may have prepared some intricated plot (an not necessarily amusing) to be climaxed on the lasts episodes.
+
 ## **VI. Interactive component**
 
 ### ***i) D3***
 
 ### ***ii) Shiny***
-
+<!--  -->
 
 ## **VII. Conclusion**
