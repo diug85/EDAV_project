@@ -59,9 +59,8 @@ library(ggrepel)
 library(cluster)
 library(igraph, quietly = TRUE, warn.conflicts = FALSE, verbose = FALSE)
 library(visNetwork)
-library(shiny)
 library(ggplot2)
-library(Cairo)
+library(plotly)
 ```
 
 \
@@ -103,7 +102,7 @@ We have use the next R libraries for the development of this project :
 * For data extraction and manipulation: [`dplyr`](https://www.rdocumentation.org/packages/dplyr){target="_blank"}, [`rvest`](https://www.rdocumentation.org/packages/rvest/versions/0.3.5){target="_blank"}, [`robotstxt`](https://www.rdocumentation.org/packages/robotstxt/versions/0.6.2){target="_blank"},[`base`](https://www.rdocumentation.org/packages/base/versions/3.6.2){target="_blank"}, [`Hmisc`](https://www.rdocumentation.org/packages/Hmisc/versions/4.3-0){target="_blank"}
 
 
-* For data visualization: [`ggplot2`](https://www.rdocumentation.org/packages/ggplot2/versions/3.2.1){target="_blank"}, [`ggthemes`](https://www.rdocumentation.org/packages/ggthemes/versions/3.5.0){target="_blank"}, [`ggrepel`](https://www.rdocumentation.org/packages/ggrepel/versions/0.8.1){target="_blank"}, [`visNetwork`](https://www.rdocumentation.org/packages/visNetwork/versions/2.0.9){target="_blank"}, [`d3`](https://d3js.org/){target="_blank"}, [`shiny`](https://www.rdocumentation.org/packages/shiny/versions/1.4.0){target="_blank"}
+* For data visualization: [`ggplot2`](https://www.rdocumentation.org/packages/ggplot2/versions/3.2.1){target="_blank"}, [`ggthemes`](https://www.rdocumentation.org/packages/ggthemes/versions/3.5.0){target="_blank"}, [`ggrepel`](https://www.rdocumentation.org/packages/ggrepel/versions/0.8.1){target="_blank"}, [`visNetwork`](https://www.rdocumentation.org/packages/visNetwork/versions/2.0.9){target="_blank"}, [`d3`](https://d3js.org/){target="_blank"}
 
 * Furthermore, for run some of the analysis and visualizations we have used some Machine Learning (ML) techniques and other statistical tools such as: Kmeans analysis([`cluster`](https://www.rdocumentation.org/packages/cluster/versions/2.1.0){target="_blank"}), Graph and network analysis([`igraph`](https://www.rdocumentation.org/packages/igraph/versions/1.2.4.2){target="_blank"}), Topic analysis([`textmineR`](https://www.rdocumentation.org/packages/textmineR/versions/3.0.4){target="_blank"}, [`stopwords`](https://www.rdocumentation.org/packages/stopwords/versions/1.0){target="_blank"})
 
@@ -474,89 +473,8 @@ Centers
 
 
 ```{r echo=FALSE}
-Gclusters1
+ggplotly(Gclusters1)
 ```
-
-Interactivity Scatter Plot
-
-
-```{r include=FALSE}
-ui <- fluidPage(
-  fluidRow(
-    
-    column(width = 10, class = "well",
-           h4("Brush the Points and Get a Zoom and get the data"),
-           fluidRow(
-             column(width = 6,
-                    plotOutput("plot2", height = 400,
-                               brush = brushOpts(
-                                 id = "plot2_brush",
-                                 resetOnNew = TRUE
-                               )
-                    )
-             ),
-             column(width = 6,
-                    plotOutput("plot3", height = 400)
-             )
-           )
-    )
-    
-  ),
-  
-  verbatimTextOutput("info"),
-  
-)
-
-server <- function(input, output) {
-  
-  
-  # -------------------------------------------------------------------
-  # Linked plots (middle and right)
-  ranges2 <- reactiveValues(x = NULL, y = NULL)
-  
-  output$plot2 <- renderPlot({
-    filter(DF_kmeans, (Cluster== Centers[1,4] | Cluster== Centers[2,4] | Cluster== Centers[3,4])& Total_scene>=10)%>%
-      ggplot(aes(Total_scene, Total_lines, color=factor(Group))) +geom_point(alpha=0.7, stroke=0.5, size=3)
-  })
-  
-  output$plot3 <- renderPlot({
-    filter(DF_kmeans, (Cluster== Centers[1,4] | Cluster== Centers[2,4] | Cluster== Centers[3,4])& Total_scene>=10)%>%
-      ggplot(aes(Total_scene, Total_lines, color=factor(Group))) +geom_point(alpha=0.7, stroke=0.5, size=3) +
-      coord_cartesian(xlim = ranges2$x, ylim = ranges2$y, expand = FALSE)
-  })
-  
-  # When a double-click happens, check if there's a brush on the plot.
-  # If so, zoom to the brush bounds; if not, reset the zoom.
-  observe({
-    brush <- input$plot2_brush
-    if (!is.null(brush)) {
-      ranges2$x <- c(brush$xmin, brush$xmax)
-      ranges2$y <- c(brush$ymin, brush$ymax)
-      
-    } else {
-      ranges2$x <- NULL
-      ranges2$y <- NULL
-    }
-  })
-  
-  output$info <- renderPrint({
-    brushedPoints( filter(DF_kmeans, (Cluster== Centers[1,4] | Cluster== Centers[2,4] | Cluster== Centers[3,4])& Total_scene>=10), input$plot2_brush)
-  })
-  
-  
-  
-}
-
-shinyApp(ui = ui, server = server)
-
-```
-
-
-
-```{r echo=FALSE, fig.width=7, fig.height=40}
-shinyApp(ui = ui, server = server)
-``` 
-
 
 * **Main characters participation**
 
@@ -682,12 +600,6 @@ G_Inter_main=graph_from_adjacency_matrix(Mat_main, mode='undirected', weighted =
 
 
 ```
-
-
-```{r echo=FALSE}
-plot(G_Inter_main, layout=layout_in_circle, vertex.label=3)
-```
-
 
 Interactivity Networks
 
@@ -915,7 +827,6 @@ A likely explanation for the behaviour on the last 7 episodes of all seasons is 
 
 We included four elements that are interactive:
 
-* **Zoom scatterplot** using Shinny.
 * **Inraction network** using VisNetwork.
 * **Bar plot for topics per episode** using d3.
 * **Rating timeseries per season** using d3.
