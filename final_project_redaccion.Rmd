@@ -52,6 +52,14 @@ library(tidyverse)
 library(Hmisc)
 library(textmineR)
 library(extracat)
+library(ggrepel)
+library(cluster)
+library(igraph, quietly = TRUE, warn.conflicts = FALSE, verbose = FALSE)
+library(visNetwork)
+library(shiny)
+library(ggplot2)
+library(Cairo)
+
 ```
 
 \
@@ -124,8 +132,6 @@ The primary data sources that we used for our project and that we consider that 
       + The second difficulty that we have experienced in the dialogue dataset is the cleaning of the dialogues itself. We tried to standardize as most as possible the content of the dialogues, by identifying different names for the same character, common typos and regular expressions that could hinder our analysis.
 
 ## **III. Data transformation**
-
-### ***i) Building a Metabase***
 
 The objective of the data transformation stage was to extract the information from our 2 data sources, IMDb and Github repository, and built a unique Metabase that constitued our main dataframe to carry out our quantitative analyisis of **Friends** and generate suitable graphics. To achive our objetive we have followed the next steps:
 
@@ -355,22 +361,262 @@ dialogues=inner_join(dialogues,IMDbRatings[,c(1,4,7,8,9)], by= c("episode_id"="e
 str(dialogues)
 ```
 
-### ***ii) Data structure for Network analysis***
-
-For the Network analysis a special data structure is required. We established the a defition of interaction between characters when they share scene. We must mention that the data estructure does not make possible to identify the exact interaction of the characters in the scene. Hence, we have made the assumption that all the characters that appeared in eavery scene interacted between them. Moreover, we have assumed that the interactions between the characters will be represented by a adjecency matrix where we can observe 
-
-
-
-
-## **IV. Missing values**
-
-
-
 ## **V. Results**
 
 ### ***i) Labeling the main and secondary characters and its participation***
 
+* The first big question that we want to explore is the categorization by importance by the participation of the characters? As we have previously mentioned this question seems to be naive, however, if we assume that we do not have any previous knowledge of the sitcom and considering that over the ten seasons more than 800 characters appeared in the show, the analysis is far from being a naive exercise.
+
+To answer this question we have used the unsupervised Machine Learning technique of Kmean. Its objective s to label the data based on certain characteristics, in this case, we used the number of words, lines, and scenes. To accomplish this task we have used the libraries  [`cluster`](https://www.rdocumentation.org/packages/cluster/versions/2.1.0){target="_blank"}, and [`base`](https://www.rdocumentation.org/packages/base/versions/3.6.2){target="_blank"}. Moreover, we have established established a priori the desired number of labels tha we wanted for our data, for practicity terms we decides to set the size of the groups or kmeans.
+
+```{r include=FALSE}
+
+
+DF_Character_Episode=dialogues%>%
+  group_by(episode, season, scene, character, episode_id)%>%
+  summarise(num_lines= n(), totwords=sum(words,na.rm = T), avgRating=mean(averageRating,na.rm = T) )%>%
+  arrange(scene ,-num_lines, -totwords)%>%
+  group_by(character, episode, season, episode_id)%>%
+  summarise(Total_scene= n(), Total_lines=sum(num_lines,na.rm = T),Tot_words=sum(totwords,na.rm = T),Avg_Rating=mean(avgRating,na.rm = T) )%>%
+  arrange(-Total_scene ,-Total_lines, -Tot_words)
+
+DF_Character=dialogues%>%
+  group_by(episode, season, scene, character, episode_id)%>%
+  summarise(num_lines= n(), totwords=sum(words,na.rm = T))%>%
+  arrange(scene ,-num_lines, -totwords)%>%
+  group_by(character)%>%
+  summarise(Total_scene= n(), Total_lines=sum(num_lines,na.rm = T),Total_words=sum(totwords,na.rm = T))%>%
+  arrange(-Total_scene ,-Total_lines, -Total_words)
+
+
+set.seed(100)
+ClusterCharacter=kmeans(DF_Character[,2:4], 3, nstart = 100)
+vcluster=seq.int(1,3,1)
+Centers=arrange(data.frame(ClusterCharacter$centers, vcluster), -Total_scene, -Total_lines, -Total_words)
+DF_kmeans=cbind(DF_Character, as.data.frame(ClusterCharacter$cluster))
+colnames(DF_kmeans)[5]=c('Cluster')
+
+DF_kmeans=DF_kmeans%>%mutate(Group=ifelse(DF_kmeans$Cluster==Centers[1,4],"Main",ifelse(DF_kmeans$Cluster==Centers[2,4],"Secondary", "Others")))
+
+
+Gclusters1=filter(DF_kmeans, Cluster== Centers[1,4] | Cluster== Centers[2,4] )%>%
+  ggplot(aes(Total_scene, Total_lines, color=factor(Group), label= character)) +geom_point(alpha=0.7, stroke=0.5, size=3)+
+  geom_text_repel(size=3)+
+  scale_x_log10() +
+  scale_y_log10()
+
+x=filter(DF_kmeans, Cluster== Centers[1,4] | Cluster== Centers[2,4] )
+
+```
+
+From the kmean analysis obtain the following separation of characters:
+  + *Main Characters*: As expected Rachel, Monica, Phoebe, Joey, Chandler and Ross constitue one group tha has that on average has 1,680 scenes, 8469 lines and 	87,498 words.
+  + *Secondary Characters*: This group is composed by 33 characters, most of them are recurrent characters and guest stars. The average character in this group has on average 35 scenes, 133 lines and 	1,228 words.
+  
+  + *Other Characters*: composed for those characters that are incidental or did not have a relevant importance in the sitcom. The average character in this group has 2 scenes, 7 lines and 64 words.
+  
+Centers: 
+
+```{r echo=FALSE}
+Centers
+```
+
+
+```{r echo=FALSE}
+Gclusters1
+```
+
+Interactivity Scatter Plot
+
+
+```{r include=FALSE}
+ui <- fluidPage(
+  fluidRow(
+    
+    column(width = 10, class = "well",
+           h4("Brush the Points and Get a Zoom and get the data"),
+           fluidRow(
+             column(width = 6,
+                    plotOutput("plot2", height = 400,
+                               brush = brushOpts(
+                                 id = "plot2_brush",
+                                 resetOnNew = TRUE
+                               )
+                    )
+             ),
+             column(width = 6,
+                    plotOutput("plot3", height = 400)
+             )
+           )
+    )
+    
+  ),
+  
+  verbatimTextOutput("info"),
+  
+)
+
+server <- function(input, output) {
+  
+  
+  # -------------------------------------------------------------------
+  # Linked plots (middle and right)
+  ranges2 <- reactiveValues(x = NULL, y = NULL)
+  
+  output$plot2 <- renderPlot({
+    filter(DF_kmeans, (Cluster== Centers[1,4] | Cluster== Centers[2,4] | Cluster== Centers[3,4])& Total_scene>=10)%>%
+      ggplot(aes(Total_scene, Total_lines, color=factor(Group))) +geom_point(alpha=0.7, stroke=0.5, size=3)
+  })
+  
+  output$plot3 <- renderPlot({
+    filter(DF_kmeans, (Cluster== Centers[1,4] | Cluster== Centers[2,4] | Cluster== Centers[3,4])& Total_scene>=10)%>%
+      ggplot(aes(Total_scene, Total_lines, color=factor(Group))) +geom_point(alpha=0.7, stroke=0.5, size=3) +
+      coord_cartesian(xlim = ranges2$x, ylim = ranges2$y, expand = FALSE)
+  })
+  
+  # When a double-click happens, check if there's a brush on the plot.
+  # If so, zoom to the brush bounds; if not, reset the zoom.
+  observe({
+    brush <- input$plot2_brush
+    if (!is.null(brush)) {
+      ranges2$x <- c(brush$xmin, brush$xmax)
+      ranges2$y <- c(brush$ymin, brush$ymax)
+      
+    } else {
+      ranges2$x <- NULL
+      ranges2$y <- NULL
+    }
+  })
+  
+  output$info <- renderPrint({
+    brushedPoints( filter(DF_kmeans, (Cluster== Centers[1,4] | Cluster== Centers[2,4] | Cluster== Centers[3,4])& Total_scene>=10), input$plot2_brush)
+  })
+  
+  
+  
+}
+
+shinyApp(ui = ui, server = server)
+
+```
+
+
+
+```{r echo=FALSE, fig.width=7, fig.height=40}
+shinyApp(ui = ui, server = server)
+``` 
+
 ### ***ii) Unraveling the character interactions ***
+
+For the Network analysis, a special data structure is required. We established a definition of interaction between characters when they share the same scene. We must mention that the original data structure of the dialogues does not permit us to identify the exact interaction of the characters in the scene. Hence, we have assumed that all the characters that appeared in every scene interacted between them. Moreover, we have assumed that the interactions between the characters will be represented by an adjacency matrix where we can observe the number of interactions that each character has with the others.
+
+With the library [`igraph`](https://www.rdocumentation.org/packages/igraph/versions/1.2.4.2){target="_blank"}) we were able to create the adjecency matrix of the characters and quantify the interactions among the 869 characters. 
+
+
+
+```{r include=FALSE}
+
+
+num_episode=as.data.frame(dialogues$episode_id[!duplicated(dialogues$episode_id)])
+colnames(num_episode)[1]=c('episode_id')
+Interaction=data.frame(from=character(), to=character(), episode=character(), scene=numeric(), stringsAsFactors=TRUE)
+
+
+for (i in 1:nrow(num_episode)) 
+{ 
+  
+  BD_episode=filter(dialogues,dialogues$episode_id==num_episode[i,])
+  
+  num_scene=as.data.frame(BD_episode$scene[!duplicated(BD_episode$scene)])
+  
+  colnames(num_scene)[1]=c('scene')
+  
+  for (j in 1:nrow(num_scene)) 
+  {
+    
+    BD_scene=filter(BD_episode,BD_episode$scene==num_scene[j,])
+    
+    num_character=as.data.frame(BD_scene$character[!duplicated(BD_scene$character)])
+    
+    colnames(num_character)[1]=c('character')
+    
+    from=num_character %>% slice(rep(1:n(), each = n()))
+    
+    to=do.call("rbind", replicate(nrow(num_character), num_character, simplify = FALSE))
+    
+    episode_i=do.call("rbind", replicate(nrow(to), as.character(num_episode[i,]), simplify = FALSE))
+    
+    scene_i=do.call("rbind", replicate(nrow(to), num_scene[j,], simplify = FALSE))
+    
+    Interaction_i=data.frame(from, to, episode_i, scene_i )
+    
+    colnames(Interaction_i)=c('from','to','episode', 'scene')
+    
+    Interaction_i=subset(Interaction_i, from!=to)
+    
+    Interaction=rbind(Interaction,Interaction_i)
+    
+  }
+  
+  rm(Interaction_i,scene_i,episode_i,from, to, num_character, num_scene, BD_episode, BD_scene)
+  
+}
+
+### 
+
+G_Inter=graph_from_data_frame(Interaction, directed = FALSE, vertices = NULL)
+
+Mat_Inter=as_adjacency_matrix(G_Inter, sparse=FALSE)
+
+Mat_Inter=Mat_Inter/2
+
+Mat_main=Mat_Inter[x[,1],x[,1]]
+
+G_Inter_main=graph_from_adjacency_matrix(Mat_main, mode='undirected', weighted = TRUE)
+
+
+```
+
+
+```{r echo=FALSE}
+plot(G_Inter_main, layout=layout_in_circle, vertex.label=3)
+```
+
+
+Interactivity Networks
+
+
+```{r include=FALSE}
+
+
+data=toVisNetworkData(G_Inter_main)
+
+nodes = inner_join(data$nodes,DF_kmeans[,c(1,5,6)], by=c("id"="character"))
+colnames(nodes)[c(4)]=c('group')
+
+edges=data$edges
+edges$value=edges$weight
+
+GNet=visNetwork(nodes, edges, height = "1000px", width="1000px") %>%
+  visIgraphLayout(layout = "layout_in_circle")%>%
+  visNodes(size = 10) %>%
+  visOptions(selectedBy = "group",
+             highlightNearest = list(enabled = TRUE, algorithm = "hierarchical", degree = 1),
+             nodesIdSelection = TRUE)%>%
+  visInteraction(hideEdgesOnDrag = TRUE)%>%
+  visEdges(color = list(highlight = "blue", hover = "red"))%>%
+  visGroups(groupname = "Main", color = "red", shape = "square", 
+            shadow = list(enabled = TRUE))%>%
+  visGroups(groupname = "Secondary", color = "blue", shape = "dot")
+
+```
+
+
+
+```{r echo=FALSE}
+GNet
+```
+
 
 ### ***iii) Extracting the main topics***
 
@@ -379,9 +625,7 @@ For the Network analysis a special data structure is required. We established th
 
 ## **VI. Interactive component**
 
-### ***i) D3***
 
-### ***ii) Shiny***
 
 
 ## **VII. Conclusion**
