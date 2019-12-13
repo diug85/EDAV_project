@@ -15,11 +15,11 @@ output:
 body{ /* Normal  */
       font-size: 18px;
   }
-  
+
 /* Headers */
 h2,h5{
   font-size: 30pt;}
-  
+
   code.r{
   font-size: 14px;
 }
@@ -27,7 +27,7 @@ h2,h5{
 pre {
   font-size: 14px
 }
-  
+
 </style>
 
 
@@ -52,6 +52,7 @@ library(tidyverse)
 library(Hmisc)
 library(textmineR)
 library(extracat)
+library(GGally)
 library(htmltools)
 library(textmineR)
 ```
@@ -82,7 +83,7 @@ As teenagers at the beginning of the century, we were heavily influenced by the 
 
 * Can we categorize by importance all the appearing characters of the sitcom? This question at first glance could seem simple but under the assumption that we do not possess any previous knowledge of the sitcom and considering that over the ten seasons more than 800 characters appeared in the show, the analysis represents a challenge.
 
-* Can we identify and quantify the interactions between the main and secondary characters? What would be an appropriate way to quantify and visualize these relationships? 
+* Can we identify and quantify the interactions between the main and secondary characters? What would be an appropriate way to quantify and visualize these relationships?
 
 * Which are the most recurrent topics through the seasons and episodes of the show? And how the thematic of the show evolved over its ten seasons? Can we extract this information through the dialogues of the show?
 
@@ -98,7 +99,7 @@ We have use the next R libraries for the development of this project :
 * For data visualization: [`ggplot2`](https://www.rdocumentation.org/packages/ggplot2/versions/3.2.1){target="_blank"}, [`ggthemes`](https://www.rdocumentation.org/packages/ggthemes/versions/3.5.0){target="_blank"}, [`ggrepel`](https://www.rdocumentation.org/packages/ggrepel/versions/0.8.1){target="_blank"}, [`visNetwork`](https://www.rdocumentation.org/packages/visNetwork/versions/2.0.9){target="_blank"}, [`d3`](https://d3js.org/){target="_blank"}, [`shiny`](https://www.rdocumentation.org/packages/shiny/versions/1.4.0){target="_blank"}
 
 * Furthermore, for run some of the analysis and visualizations we have used some Machine Learning (ML) techniques and other statistical tools such as: Kmeans analysis([`cluster`](https://www.rdocumentation.org/packages/cluster/versions/2.1.0){target="_blank"}), Graph and network analysis([`igraph`](https://www.rdocumentation.org/packages/igraph/versions/1.2.4.2){target="_blank"}), Topic analysis([`textmineR`](https://www.rdocumentation.org/packages/textmineR/versions/3.0.4){target="_blank"}, [`stopwords`](https://www.rdocumentation.org/packages/stopwords/versions/1.0){target="_blank"})
- 
+
 
 ## **II. Data sources**
 
@@ -113,22 +114,22 @@ The primary data sources that we used for our project and that we consider that 
 
 ### ***ii) Data quality and challenges***
 
-   * IMDb Dataset: 
-   
+   * IMDb Dataset:
+
       + The first obstacle that we faced with the IMDb datasets was the size of the data sets, some of them have millions of rows with the information of Tv-series, shorts, movies, documentaries, and other entertainment formats. It was impossible to store them in our Github.
-            
+
       + The second obstacle was to track, which was the data corresponding to our case of study. For example, we searched in the dataset only by name 'Friends' we found 178 results of TV-series or movies called 'Friends'. It was necessary to understand and do some research on the years of beginning and end of the series to refine the search.
-      
+
       +  Another obstacle was that the ID for TV-series across the seven IMDb datasets was not uniform. For example, in the dataset corresponding to the titles of the TV-series, the ID to identify the show is named "tconst", while on the dataset that where we can get the ID of the episode the name correspond to the ID of the episode, and the ID for the TV-series is called "parentTconst". These errors were identified through the exploration of the datasets.
 
-   * Transcipt Dataset: 
-   
+   * Transcipt Dataset:
+
       +  The main obstacle of the dialogue dataset is that not all the HTML files share the same format. We have overcome this difficulty by incorporating special cases in our scraping code that took into account the special cases that we have detected.
-      
+
       + The second difficulty that we have experienced in the dialogue dataset is the cleaning of the dialogues itself. We tried to standardize as most as possible the content of the dialogues, by identifying different names for the same character, common typos and regular expressions that could hinder our analysis.
-    
+
     You can follow the scraping code that lead to the folowing data frame by looking into "frieds.Rmd" file in the Git Hub repository.
-    
+
 ```{r eval=FALSE}
 url <- "https://fangj.github.io/friends/"
 paths_allowed(url)
@@ -161,13 +162,13 @@ read_dialogues <- function(link,ep_id) {
       mutate(is_scene = ifelse(substr(rows2,0,1)=="[",1,0))
   }else{
       if(length(html %>% html_nodes("p,font p"))<10 ){
-        rows <- html %>% html_nodes("font[size='3']") %>% 
+        rows <- html %>% html_nodes("font[size='3']") %>%
           gsub(pattern = '<.*?>', replacement = "|")
         if(length(rows)==0){
           rows <- html %>%
               gsub(pattern = '<br\\s*/?>', replacement = "|")
         }
-        
+
         df_1 <-data.frame()
         for (i in 1:length(rows)) {
           rows_2 <- strsplit(rows[i],split="[|]")
@@ -175,26 +176,26 @@ read_dialogues <- function(link,ep_id) {
           names(df_temp) <- c("rows")
           df_1 <- rbind(df_1, df_temp)
         }
-        
-        df_2 <- df_1 %>%    
+
+        df_2 <- df_1 %>%
           mutate(rows2= trimws(rows)) %>%
           mutate(rows2 = str_replace_all(rows2, "[\n]" , " ")) %>%
           mutate(rows2 = str_replace_all(rows2, "<b>" , " ")) %>%
            mutate(rows2 = str_replace_all(rows2, "</b>" , " ")) %>%
           mutate(is_scene = ifelse(substr(rows2,0,1)=="[" | substr(rows2,0,1)=="(",1,0)) %>%
           mutate(rows2= trimws(ifelse(is_scene==1,rows2,str_replace(rows2,"\\[([^\\)]+)\\]"," "))   ))
-       
+
     }else{
-        rows <- html %>% html_nodes("p,font p") %>% html_text()  
+        rows <- html %>% html_nodes("p,font p") %>% html_text()
         df_1 <- data.frame(rows)
         df_2 <- df_1 %>%
       mutate(rows2= trimws(str_replace(rows,"\\(([^\\)]+)\\)"," ") )) %>%
       mutate(is_scene = ifelse(substr(rows2,0,1)=="[",1,0))
-    } 
+    }
   }
- 
+
   df_2$split <- str_locate(df_2[,"rows2"],  "\\w+:|\\w+.\\w+:|\\w+.\\s\\w+:" )[,2]
- 
+
   df_3 <- df_2 %>%
     mutate(character=ifelse(is.na(split),"",toupper(trimws(substr(rows2,0,split - 1 ))))) %>%
     mutate(line=ifelse(is.na(split),"",trimws(substr(rows2,split + 1,1000000)))) %>%
@@ -204,17 +205,17 @@ read_dialogues <- function(link,ep_id) {
     mutate(line=trimws(str_replace_all(line,'[\"]'," ")) ) %>%
     mutate(line=trimws(str_replace_all(line,"\\s+"," ")) ) %>%
     filter(character != "WRITTEN BY")
-  
+
 
   df_4 <- data.frame(df_3, scene=cumsum(df_3$is_scene))
-  
+
   df_5 <- df_4 %>%
     filter(rows2!="",!is_scene,!is.na(character),character!="")
 
   df_5$line_num <- seq.int(nrow(df_5))
   df_6<- df_5 %>%
     dplyr::select(c("episode_id","line_num","scene",'character','line'))
-  
+
   return(df_6)
 }
 
@@ -224,8 +225,6 @@ read_dialogues <- function(link,ep_id) {
 dialogues <- data.frame()
 for (i in 1:nrow(df)) {
   n <- read_dialogues(df[i,"link"],df[i,"id"])
-  # print(i)
-  # print(nrow(n))
   dialogues <- rbind(dialogues, n)
 }
 head(dialogues)
@@ -243,9 +242,9 @@ head(dialogues)
 
 ### ***i) Building a Metabase***
 
- * Step 1: 
+ * Step 1:
       + Step 1.1: After scraping the dialogues data we had to do some data cleaning and transformation to create a data frame with the name of the character, dialogue line, scene, episode and words count.
-      
+
       First we added a word count to dialogues.
 
 ```{r echo=FALSE}
@@ -270,7 +269,7 @@ dialogues <- dialogues %>%
   mutate(episode_id = if_else(episode_id == "6 : 15-16" & scene >= 15,"6 : 16",episode_id)) %>%
   mutate(episode_id = if_else(episode_id == "9 : 23-24" & scene < 16,"9 : 23",episode_id)) %>%
   mutate(episode_id = if_else(episode_id == "9 : 23-24" & scene >= 16,"9 : 24",episode_id)) %>%
-  mutate(episode_id = if_else(episode_id == "10 : 17-18" ,"10 : 17",episode_id)) 
+  mutate(episode_id = if_else(episode_id == "10 : 17-18" ,"10 : 17",episode_id))
 
 episodes_df <- rbind(episodes_df,c("","","2","12","The Superbowl (part 1)","2 : 12"))
 episodes_df <- rbind(episodes_df,c("","","2","13","The Superbowl (part 2)","2 : 13"))
@@ -305,8 +304,8 @@ dialogues <- dialogues %>%
   mutate(character = if_else(character == "CHAN" ,"CHANDLER", character)) %>%
   mutate(character = if_else(character == "PHOE" ,"PHOEBE", character))
 
-dialogues <- filter(dialogues, dialogues$character!="TELEPLAY BY" &  
-                    dialogues$character!="PART I WRITTEN BY" &  
+dialogues <- filter(dialogues, dialogues$character!="TELEPLAY BY" &
+                    dialogues$character!="PART I WRITTEN BY" &
                     dialogues$character!="{TRANSCRIBER'S NOTE" &
                     dialogues$character!="STORY BY" &
                     dialogues$character!="{TRANSCIBER<U+0092>S NOTE"&
@@ -327,9 +326,9 @@ head(dialogues)
 
 More data transformation will be used and explained in each of the Results subsections.
 
-      
+
       + Step 1.2: Extract, decompress and save as dataframes. Tha 3 tables of IMDb that we have used in our analysis are those that allowed us to extract the information related to the rating of each episode.
-      
+
 ```{r include=FALSE}
 load(file = "data/dfratings.RData")
 load(file = "data/dfepisode.RData")
@@ -337,7 +336,7 @@ load(file = "data/dfepisode.RData")
 *title.ratings.tsv.gz*
 ```{r echo=FALSE}
 str(dfratings)
-```         
+```
 
 *title.episode.tsv.gz*
 ```{r echo=FALSE}
@@ -369,12 +368,12 @@ IMDbRatings=IMDbRatings %>%
 ```{r echo=FALSE}
 str(IMDbRatings)
 ```
-   
+
    * Step 3: With a Left-Join we created the Metabase that had as primary dataframe the dialogues and as secondary dataframe the ratimgs from IMDb.
-   
+
 ```{r include=FALSE}
 dialogues=inner_join(dialogues,IMDbRatings[,c(1,4,7,8,9)], by= c("episode_id"="episode_id"))
-```     
+```
 
 ```{r echo=FALSE}
 str(dialogues)
@@ -382,7 +381,7 @@ str(dialogues)
 
 ### ***ii) Data structure for Network analysis***
 
-For the Network analysis a special data structure is required. We established the a defition of interaction between characters when they share scene. We must mention that the data estructure does not make possible to identify the exact interaction of the characters in the scene. Hence, we have made the assumption that all the characters that appeared in eavery scene interacted between them. Moreover, we have assumed that the interactions between the characters will be represented by a adjecency matrix where we can observe 
+For the Network analysis a special data structure is required. We established the a defition of interaction between characters when they share scene. We must mention that the data estructure does not make possible to identify the exact interaction of the characters in the scene. Hence, we have made the assumption that all the characters that appeared in eavery scene interacted between them. Moreover, we have assumed that the interactions between the characters will be represented by a adjecency matrix where we can observe
 
 
 
@@ -407,7 +406,7 @@ We decided to fill those missing values with "". By doing so we will keep the re
 ```{r echo=FALSE}
 dialogues <- dialogues %>%
   mutate(words = if_else(is.na(line) , 0, as.double(words))) %>%
-  mutate(line = if_else(is.na(line) ,"", line)) 
+  mutate(line = if_else(is.na(line) ,"", line))
 ```
 
 
@@ -456,7 +455,7 @@ The opposite happens with Joey. He is number 5 for number of lines, but he is th
 ```{r echo=FALSE}
 dialogues %>%
   filter(character %in% main_characters) %>%
-  group_by(character,episode_id) %>% 
+  group_by(character,episode_id) %>%
   summarise(lines_count=n()) %>%
   ggplot(aes(x=lines_count,y=..density..)) +
      geom_histogram(bins=40, color = "#0d1fe6", fill = "lightblue", boundary = 0) +
@@ -478,7 +477,7 @@ For topic modelling we will use the package **textmineR**. We will try to find t
 
 ```{r echo=FALSE}
 dialogues_by_episode <- dialogues %>%
-  group_by(episode_id) %>% 
+  group_by(episode_id) %>%
   summarise(lines=trimws(paste(line, collapse = " ")))
 head(dialogues_by_episode)
 ```
@@ -488,9 +487,9 @@ Function CrateDtm creates a document term matrix. To do so we use a group of sto
 ```{r echo=FALSE}
 #create DTM
 set.seed(12345)
-dtm <- CreateDtm(dialogues_by_episode$lines, 
-                 doc_names = dialogues_by_episode$episode_id, 
-                 stopword_vec = c(stopwords::stopwords("en"), 
+dtm <- CreateDtm(dialogues_by_episode$lines,
+                 doc_names = dialogues_by_episode$episode_id,
+                 stopword_vec = c(stopwords::stopwords("en"),
                                   stopwords::stopwords(source = "smart"),
                                   tolower(main_characters),
                                   c("yeah","uh","ah","ya","umm","ow","hey","um","huh",
@@ -519,7 +518,7 @@ Now we fit a Latent Dirichlet allocation model in which we will try to fit 15 to
 
 ```{r echo=FALSE}
 set.seed(12345)
-model <- FitLdaModel(dtm = dtm, 
+model <- FitLdaModel(dtm = dtm,
                      k = 15,
                      iterations = 1000,
                      burnin = 180,
@@ -529,7 +528,7 @@ model <- FitLdaModel(dtm = dtm,
                      calc_likelihood = TRUE,
                      calc_coherence = TRUE,
                      calc_r2 = TRUE,
-                     cpus = 2) 
+                     cpus = 2)
 
 print("Theta:")
 head(model$theta[,1:5])
@@ -542,8 +541,8 @@ Now the 15 topics have been created. To know about the topics quality we look in
 ```{r echo=FALSE}
 summary(model$coherence)
 
-hist(model$coherence, 
-     col= "#0d1fe6", 
+hist(model$coherence,
+     col= "#0d1fe6",
      main = "Histogram of topic coherence")
 ```
 
@@ -609,14 +608,62 @@ write.csv(assignments3,"docs/topics_assignments.csv")
 htmltools::includeHTML("https://bernacho.github.io/EDAV_project/d3_lda.html")
 ```
 
-### ***iv) Rating contribution per character***
+### ***iv) Features driving the rating***
 
+To look for the main features that drive the rating up or down, it is useful to start by observing its tempral structure. The following graph is **interactive**:
+
+<font color="#960c0c"><i>Click on the season title to (de)activate each series</i></font>
+
+```{r echo=FALSE}
+htmltools::includeHTML('./docs/rating_per_season.html')
+```
+
+  - There is a generalized behaviour among the 10 seasons:
+    - Episode 1 has high rating and immediately falls into a valley around 8.4
+    - Through episodes 6-9 theres usually a peak followed of another (larger) valley
+    - Finally, the last episode has high rating
+
+Next, to create a cleaner view of the data, we create a boxplot
+
+```{r echo=FALSE}
+load('./data/dfepisode.RData')
+load('./data/dfratings.RData')
+
+key <- function(season, episode){
+  # s <- toString(season)
+  e <- str_pad(episode, 2, 'left', 0)
+  paste(season, e, sep=' : ')
+}
+
+episode <- dfepisode %>%
+  filter(parentTconst=='tt0108778')  %>%
+  mutate(key = key(seasonNumber, episodeNumber),
+         episodeNumber = as.integer(as.character(episodeNumber)),
+         seasonNumber = factor(seasonNumber, levels = 1:10)) %>%
+  left_join(dfratings, by = 'tconst') %>%
+  arrange(as.numeric(as.character(seasonNumber)), as.numeric(as.character(episodeNumber)))
+
+ggplot(episode, aes(x=factor(episodeNumber, levels = 1:25), averageRating)) + geom_boxplot()
+```
+
+ The boxplots not only help to confirm in a cleaner graph the behaviour observed previously, but also provides additional insigths like:
+ 
+  - The perceived quality (in terms of rating) of episodes 7 to 9 varies a lot from season to season.
+  - The 10th episode for all season has low rating surrounding 8.2. These were traditionally aired through the holidays season in December.
+  - Two highest ratings:
+    - Special episode after the 1996 Super Bowl
+    - Final episode (Season 10, episode 18)
+  - Two lowest ratings ():
+    - Season 10, episode 10: "Christmas in Tulsa"
+    - Season 6, episode 20: "Mac and Cheese" happens in the 19-21 episode valley
+
+A likely explanation for the behaviour on the last 7 episodes of all seasons is that writers may have prepared some intricated plot (an not necessarily amusing) to be climaxed on the lasts episodes.
 
 ## **VI. Interactive component**
 
 ### ***i) D3***
 
 ### ***ii) Shiny***
-
+<!--  -->
 
 ## **VII. Conclusion**
