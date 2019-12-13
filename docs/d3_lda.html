@@ -9,7 +9,7 @@
 	<body>
         <h1>Top episodes by topic</h1>
         <p>Click the circles to see the episodes with highest P(topic | episode).</p>
-		<svg width="1200" height="800">
+		<svg id="ldaSVG" width="1200" height="800">
             <g id="selectors"></g>
             <g id="plot" transform="translate(600,50)"></g>
         </svg>
@@ -29,7 +29,7 @@
             function onlyUnique(value, index, self) { 
                 return self.indexOf(value) === index;
             }
-            var svg = d3.select("svg");
+            var svg = d3.select("svg#ldaSVG");
             
 
             var xScale = d3.scaleBand()
@@ -86,7 +86,7 @@
                 
             }
             
-            d3.csv("https://bernacho.github.io/EDAV_project/topics_assignments.csv", rowConverter)
+            d3.csv("https://raw.githubusercontent.com/Bernacho/EDAV_project/master/data/topics_assignments.csv", rowConverter)
             .then(function(data) {
                 all_data = data;
                 
@@ -114,6 +114,10 @@
                 texts.enter().append("text").style("font","17px serif")
                 .merge(texts)
                 .attr('x',80).attr('y',(d,i)=>30+(i*50)).text(d=>d[0]+": "+d[1]);
+            }).catch(function(error) {
+  
+            svg.append("text").attr("fill","red").attr("x",100).attr("y",100).text(error);
+                
             });
 		</script>
 
