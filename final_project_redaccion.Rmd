@@ -449,7 +449,7 @@ colnames(DF_kmeans)[5]=c('Cluster')
 DF_kmeans=DF_kmeans%>%mutate(Group=ifelse(DF_kmeans$Cluster==Centers[1,4],"Main",ifelse(DF_kmeans$Cluster==Centers[2,4],"Secondary", "Others")))
 
 
-Gclusters1=filter(DF_kmeans, Cluster== Centers[1,4] | Cluster== Centers[2,4] )%>%
+Gclusters1=filter(DF_kmeans, (Cluster== Centers[1,4] | Cluster== Centers[2,4] | Cluster== Centers[3,4])& Total_scene>=5 )%>%
   ggplot(aes(Total_scene, Total_lines, color=factor(Group), label= character)) +geom_point(alpha=0.7, stroke=0.5, size=3)+
   geom_text_repel(size=3)+
   scale_x_log10() +
@@ -534,12 +534,9 @@ By looking into lines per episode distribution we find the following:
 
 For the Network analysis, a special data structure is required. We established a definition of interaction between characters when they share the same scene. We must mention that the original data structure of the dialogues does not permit us to identify the exact interaction of the characters in the scene. Hence, we have assumed that all the characters that appeared in every scene interacted between them. Moreover, we have assumed that the interactions between the characters will be represented by an adjacency matrix where we can observe the number of interactions that each character has with the others.
 
-With the library [`igraph`](https://www.rdocumentation.org/packages/igraph/versions/1.2.4.2){target="_blank"}) we were able to create the adjacency matrix of the characters and quantify the interactions among the 869 characters. 
-
-
+With the library [`igraph`](https://www.rdocumentation.org/packages/igraph/versions/1.2.4.2){target="_blank"}) we were able to create the adjecency matrix of the characters and quantify the interactions among the 869 characters. For the 6 main characters the adjacency matrix look like this:
 
 ```{r include=FALSE}
-
 
 num_episode=as.data.frame(dialogues$episode_id[!duplicated(dialogues$episode_id)])
 colnames(num_episode)[1]=c('episode_id')
@@ -598,15 +595,6 @@ Mat_main=Mat_Inter[x[,1],x[,1]]
 
 G_Inter_main=graph_from_adjacency_matrix(Mat_main, mode='undirected', weighted = TRUE)
 
-
-```
-
-Interactivity Networks
-
-
-```{r include=FALSE}
-
-
 data=toVisNetworkData(G_Inter_main)
 
 nodes = inner_join(data$nodes,DF_kmeans[,c(1,5,6)], by=c("id"="character"))
@@ -629,8 +617,12 @@ GNet=visNetwork(nodes, edges, height = "1000px", width="1000px") %>%
 
 ```
 
+```{r echo=FALSE}
+Mat_main[1:6, 1:6]
+```
 
-
+Also, we Can visualize iteractively the relationship between the Main and the Secondary Characters. The width of the graph represents the level of interactions among the characters, as you may percive the interactions between the main characters is very balance.
+<font color="#960c0c"><i>Click and drag the vertices, or select the groups or the characters</i></font>
 ```{r echo=FALSE}
 GNet
 ```
@@ -824,7 +816,8 @@ A likely explanation for the behavior on the last 7 episodes of all seasons is t
 
 We included four elements that are interactive:
 
-* **Inraction network** using VisNetwork.
+* **Zoom scatterplor** using plotly.
+* **Interaction network** using VisNetwork.
 * **Bar plot for topics per episode** using d3.
 * **Rating timeseries per season** using d3.
 
@@ -836,3 +829,4 @@ We included four elements that are interactive:
 * Using VisNetwork we could build a tool that allows the user to explore the interaction between characters, depending on characters that shared scenes.
 * The most frequent terms found in the topic modelling tell us that Friends is a TV show with a very simple language. Words like "Good", "Great", "alright" and "guys" are around the most common.
 * Topic modelling results are not clear, but we do can tag some episodes in four categories "weddings", "baby-doctor", "party-thanksgiving" and "work".
+
