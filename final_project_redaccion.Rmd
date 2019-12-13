@@ -52,12 +52,16 @@ library(tidyverse)
 library(Hmisc)
 library(textmineR)
 library(extracat)
+library(htmltools)
+library(textmineR)
 ```
 
 \
 <center>
 ![](https://media.giphy.com/media/yrsaQdz7sVems/giphy.gif)
 </center>
+
+The code for this analysis is published in a public [Git Hub repository](https://github.com/Bernacho/EDAV_project).
 
 ## **I. Introduction**
 
@@ -119,29 +123,23 @@ The primary data sources that we used for our project and that we consider that 
 
    * Transcipt Dataset: 
    
-      +  The main obstacle of the dialogue dataset is that not all the HTML files share the same format. In our first, we were not able to extract the dialogues of 15 episodes. We have overcome this difficulty by incorporating special cases in our scraping code that took into account the special cases that we have detected.
+      +  The main obstacle of the dialogue dataset is that not all the HTML files share the same format. We have overcome this difficulty by incorporating special cases in our scraping code that took into account the special cases that we have detected.
       
       + The second difficulty that we have experienced in the dialogue dataset is the cleaning of the dialogues itself. We tried to standardize as most as possible the content of the dialogues, by identifying different names for the same character, common typos and regular expressions that could hinder our analysis.
-
-## **III. Data transformation**
-
-### ***i) Building a Metabase***
-
-The objective of the data transformation stage was to extract the information from our 2 data sources, IMDb and Github repository, and built a unique Metabase that constitued our main dataframe to carry out our quantitative analyisis of **Friends** and generate suitable graphics. To achive our objetive we have followed the next steps:
-
-   * Step 1: 
-      + Step 1.1: Scrap html documents of the transcripts, using the libraries [`rvest`](https://www.rdocumentation.org/packages/rvest/versions/0.3.5){target="_blank"} and [`robotstxt`](https://www.rdocumentation.org/packages/robotstxt/versions/0.6.2){target="_blank"}, and create a data frame with the name of the character, dialogue line, scene, episode and count the number of words.
-```{r include=FALSE}
-
+    
+    You can follow the scraping code that lead to the folowing data frame by looking into "frieds.Rmd" file in the Git Hub repository.
+    
+```{r eval=FALSE}
 url <- "https://fangj.github.io/friends/"
-#paths_allowed(url)
+paths_allowed(url)
+```
 
-
+```{r echo=FALSE, eval=FALSE}
 html <- read_html(url)
 episodes_list <- html %>% html_nodes("li")  %>% html_nodes("a")
 link <- episodes_list %>% html_attr("href")
 long_name <- episodes_list %>% html_text
-df <- data.frame(long_name,link) %>%
+episodes_df <- data.frame(long_name,link) %>%
   mutate(numbers = str_extract(long_name,"(\\d+-\\d+)|\\d+") ) %>%
   mutate(season=ifelse(str_length(str_match(numbers,"\\d+"))==3, substr(numbers,0,1),substr(numbers,0,2) ) ) %>%
   mutate(number=str_replace(str_replace(numbers,season,""), paste("-",season,sep = "")  ,"-") ) %>%
@@ -149,65 +147,70 @@ df <- data.frame(long_name,link) %>%
   mutate(link = paste(url,link,sep="")) %>%
   mutate(id=paste(season,":",number))
 
-df <- df[colnames(df)!="numbers"]
+episodes_df <- episodes_df[colnames(episodes_df)!="numbers"]
+```
 
+```{r echo=FALSE}
 read_dialogues <- function(link,ep_id) {
   html <- read_html(link)
   #### Special case for episode 9 : 15
   if (ep_id == "9 : 15"){
-    df_1 <- read.csv("C:/Users/mamun/Documents/EDVA Fall 2019/Info Project/episode_9_15.csv")
+    df_1 <- read.csv("data/episode_9_15.csv")
     df_2 <- df_1 %>%
-      mutate(rows2= trimws(str_replace(rows,"\\(([^\\)]+)\\)","") )) %>%
+      mutate(rows2= trimws(str_replace(rows,"\\(([^\\)]+)\\)"," ") )) %>%
       mutate(is_scene = ifelse(substr(rows2,0,1)=="[",1,0))
   }else{
-    if(length(html %>% html_nodes("p,font p"))<10 ){
-      rows <- html %>% html_nodes("font[size='3']") %>% 
-        gsub(pattern = '<.*?>', replacement = "|")
-      if(length(rows)==0){
-        rows <- html %>%
-          gsub(pattern = '<br\\s*/?>', replacement = "|")
-      }
-      
-      df_1 <-data.frame()
-      for (i in 1:length(rows)) {
-        rows_2 <- strsplit(rows[i],split="[|]")
-        df_temp <- data.frame(rows_2)
-        names(df_temp) <- c("rows")
-        df_1 <- rbind(df_1, df_temp)
-      }
-      
-      df_2 <- df_1 %>%    
-        mutate(rows2= trimws(rows)) %>%
-        mutate(rows2 = str_replace_all(rows2, "[\n]" , " ")) %>%
-        mutate(rows2 = str_replace_all(rows2, "<b>" , "")) %>%
-        mutate(rows2 = str_replace_all(rows2, "</b>" , "")) %>%
-        mutate(is_scene = ifelse(substr(rows2,0,1)=="[" | substr(rows2,0,1)=="(",1,0)) %>%
-        mutate(rows2= trimws(ifelse(is_scene==1,rows2,str_replace(rows2,"\\[([^\\)]+)\\]",""))   ))
-      
+      if(length(html %>% html_nodes("p,font p"))<10 ){
+        rows <- html %>% html_nodes("font[size='3']") %>% 
+          gsub(pattern = '<.*?>', replacement = "|")
+        if(length(rows)==0){
+          rows <- html %>%
+              gsub(pattern = '<br\\s*/?>', replacement = "|")
+        }
+        
+        df_1 <-data.frame()
+        for (i in 1:length(rows)) {
+          rows_2 <- strsplit(rows[i],split="[|]")
+          df_temp <- data.frame(rows_2)
+          names(df_temp) <- c("rows")
+          df_1 <- rbind(df_1, df_temp)
+        }
+        
+        df_2 <- df_1 %>%    
+          mutate(rows2= trimws(rows)) %>%
+          mutate(rows2 = str_replace_all(rows2, "[\n]" , " ")) %>%
+          mutate(rows2 = str_replace_all(rows2, "<b>" , " ")) %>%
+           mutate(rows2 = str_replace_all(rows2, "</b>" , " ")) %>%
+          mutate(is_scene = ifelse(substr(rows2,0,1)=="[" | substr(rows2,0,1)=="(",1,0)) %>%
+          mutate(rows2= trimws(ifelse(is_scene==1,rows2,str_replace(rows2,"\\[([^\\)]+)\\]"," "))   ))
+       
     }else{
-      rows <- html %>% html_nodes("p,font p") %>% html_text()  
-      df_1 <- data.frame(rows)
-      df_2 <- df_1 %>%
-        mutate(rows2= trimws(str_replace(rows,"\\(([^\\)]+)\\)","") )) %>%
-        mutate(is_scene = ifelse(substr(rows2,0,1)=="[",1,0))
+        rows <- html %>% html_nodes("p,font p") %>% html_text()  
+        df_1 <- data.frame(rows)
+        df_2 <- df_1 %>%
+      mutate(rows2= trimws(str_replace(rows,"\\(([^\\)]+)\\)"," ") )) %>%
+      mutate(is_scene = ifelse(substr(rows2,0,1)=="[",1,0))
     } 
   }
-  
+ 
   df_2$split <- str_locate(df_2[,"rows2"],  "\\w+:|\\w+.\\w+:|\\w+.\\s\\w+:" )[,2]
-  
+ 
   df_3 <- df_2 %>%
     mutate(character=ifelse(is.na(split),"",toupper(trimws(substr(rows2,0,split - 1 ))))) %>%
     mutate(line=ifelse(is.na(split),"",trimws(substr(rows2,split + 1,1000000)))) %>%
     mutate(episode_id = ep_id) %>%
-    mutate(line=trimws(str_remove(line,"\\(([^\\)]+)\\)")) ) %>%
+    mutate(line=trimws(str_replace_all(line,"\\(([^\\)]+)\\)"," ")) ) %>%
+    mutate(line=trimws(str_replace_all(line,"[\r\n]"," ")) ) %>%
+    mutate(line=trimws(str_replace_all(line,'[\"]'," ")) ) %>%
+    mutate(line=trimws(str_replace_all(line,"\\s+"," ")) ) %>%
     filter(character != "WRITTEN BY")
   
-  
+
   df_4 <- data.frame(df_3, scene=cumsum(df_3$is_scene))
   
   df_5 <- df_4 %>%
     filter(rows2!="",!is_scene,!is.na(character),character!="")
-  
+
   df_5$line_num <- seq.int(nrow(df_5))
   df_6<- df_5 %>%
     dplyr::select(c("episode_id","line_num","scene",'character','line'))
@@ -215,27 +218,51 @@ read_dialogues <- function(link,ep_id) {
   return(df_6)
 }
 
-df2<-read_dialogues(df[203,"link"],df[203,"id"])
+```
 
-
-
+```{r echo=FALSE, eval=FALSE}
 dialogues <- data.frame()
 for (i in 1:nrow(df)) {
   n <- read_dialogues(df[i,"link"],df[i,"id"])
-  #print(i)
-  #print(nrow(n))
+  # print(i)
+  # print(nrow(n))
   dialogues <- rbind(dialogues, n)
-  
 }
+head(dialogues)
+```
+
+```{r echo=FALSE}
+# To speed up the process we just read the data file instead of scraping
+dialogues <- read_csv("data/friends_scraping.csv")
+episodes_df <- read_csv("data/friends_episodes.csv")
+head(dialogues)
+```
 
 
+## **III. Data transformation**
+
+### ***i) Building a Metabase***
+
+ * Step 1: 
+      + Step 1.1: After scraping the dialogues data we had to do some data cleaning and transformation to create a data frame with the name of the character, dialogue line, scene, episode and words count.
+      
+      First we added a word count to dialogues.
+
+```{r echo=FALSE}
 dialogues <- dialogues %>%
   mutate(words = sapply(strsplit(line, " "), length))
 
+head(dialogues %>% select(line,words))
+```
 
-unique(filter(dialogues, grepl("-",episode_id))$episode_id)
+We can see that some episodes where put together in the same file:
+```{r echo=FALSE}
+ unique(filter(dialogues, grepl("-",episode_id))$episode_id)
+```
 
+Now we split those episodes into two different ones:
 
+```{r echo=FALSE}
 dialogues <- dialogues %>%
   mutate(episode_id = if_else(episode_id == "2 : 12-13" & scene < 36,"2 : 12",episode_id)) %>%
   mutate(episode_id = if_else(episode_id == "2 : 12-13" & scene >= 36,"2 : 13",episode_id)) %>%
@@ -243,9 +270,23 @@ dialogues <- dialogues %>%
   mutate(episode_id = if_else(episode_id == "6 : 15-16" & scene >= 15,"6 : 16",episode_id)) %>%
   mutate(episode_id = if_else(episode_id == "9 : 23-24" & scene < 16,"9 : 23",episode_id)) %>%
   mutate(episode_id = if_else(episode_id == "9 : 23-24" & scene >= 16,"9 : 24",episode_id)) %>%
-  mutate(episode_id = if_else(episode_id == "10 : 17-18" ,"10 : 17",episode_id))
+  mutate(episode_id = if_else(episode_id == "10 : 17-18" ,"10 : 17",episode_id)) 
 
+episodes_df <- rbind(episodes_df,c("","","2","12","The Superbowl (part 1)","2 : 12"))
+episodes_df <- rbind(episodes_df,c("","","2","13","The Superbowl (part 2)","2 : 13"))
 
+episodes_df <- rbind(episodes_df,c("","","6","15","That Could Have Been (part 1)","6 : 15"))
+episodes_df <- rbind(episodes_df,c("","","6","16","That Could Have Been (part 2)","6 : 16"))
+
+episodes_df <- rbind(episodes_df,c("","","9","23","In Barbados (part 1)","9 : 23"))
+episodes_df <- rbind(episodes_df,c("","","9","24","In Barbados (part 2)","9 : 24"))
+
+episodes_df <- rbind(episodes_df,c("","","10","17","The Last One","10 : 17"))
+```
+
+For more clarity, we will add season and episode columns.
+
+```{r echo=FALSE}
 dialogues <- dialogues %>%
   mutate(season =  trimws(str_extract(episode_id,".+\\:"))) %>%
   mutate(episode =trimws(str_extract(episode_id,"\\:.+")))
@@ -253,21 +294,18 @@ dialogues <- dialogues %>%
 dialogues <- dialogues %>%
   mutate(season =  as.integer( trimws(str_sub(season, end=-2)))) %>%
   mutate(episode = as.integer(trimws(str_sub(episode, start=2))))
+```
 
+Now we have to correct some character names that had typos and we removed some lines that the scraping code catched that are not dialogues.
 
-
+```{r echo=FALSE}
 dialogues <- dialogues %>%
   mutate(character = if_else(character == "RACH" ,"RACHEL", character)) %>%
   mutate(character = if_else(character == "MNCA" ,"MONICA", character)) %>%
   mutate(character = if_else(character == "CHAN" ,"CHANDLER", character)) %>%
-  mutate(character = if_else(character == "PHOE" ,"PHOEBE", character)) 
+  mutate(character = if_else(character == "PHOE" ,"PHOEBE", character))
 
-
-## added this line to eliminate auxiliary data bases and objects that are not going to be useful
-
-rm(df2, episodes_list, df, n, html, i, link, long_name, url)
-
-dialogues=filter(dialogues, dialogues$character!="TELEPLAY BY" &  
+dialogues <- filter(dialogues, dialogues$character!="TELEPLAY BY" &  
                     dialogues$character!="PART I WRITTEN BY" &  
                     dialogues$character!="{TRANSCRIBER'S NOTE" &
                     dialogues$character!="STORY BY" &
@@ -284,28 +322,23 @@ dialogues=filter(dialogues, dialogues$character!="TELEPLAY BY" &
                     dialogues$character!="{TRANSCIBER\u0092S NOTE"&
                     dialogues$character!="{TRANSCRIBER\u0092S NOTE")
 
+head(dialogues)
 ```
-      
-```{r echo=FALSE}
-str(dialogues)
-```  
-      
+
+More data transformation will be used and explained in each of the Results subsections.
+
       
       + Step 1.2: Extract, decompress and save as dataframes. Tha 3 tables of IMDb that we have used in our analysis are those that allowed us to extract the information related to the rating of each episode.
       
 ```{r include=FALSE}
-load(file = "C:/Users/mamun/Documents/EDVA Fall 2019/Info Project/dfratings.RData")
-load(file = "C:/Users/mamun/Documents/EDVA Fall 2019/Info Project/dfTitle.RData")
-load(file = "C:/Users/mamun/Documents/EDVA Fall 2019/Info Project/dfepisode.RData")
+load(file = "data/dfratings.RData")
+load(file = "data/dfepisode.RData")
 ```
 *title.ratings.tsv.gz*
 ```{r echo=FALSE}
 str(dfratings)
 ```         
-*name.basics.tsv.gz*
-```{r echo=FALSE}
-str(dfTitle)
-```
+
 *title.episode.tsv.gz*
 ```{r echo=FALSE}
 str(dfepisode)
@@ -315,21 +348,13 @@ str(dfepisode)
 
 ```{r include=FALSE}
 
-IMDbFriends=filter(dfTitle, primaryTitle=='Friends' & startYear=='1994' & endYear=='2004') # Friends vector identifier in IMDBd
-
-# rename columns to avoid duplicate column name duplicated with dfratings and dfepisode
-
-colnames(IMDbFriends)=c('parentTconst', 'titleType', 'primaryTitle', 'originalTitle', 'isAdult', 'startYear', 'endYear', 'runtimeMinutes', 'genre')
-
-# Get the ID from for each episode
-
-IMDbEpisodes=inner_join(IMDbFriends[,1:3],dfepisode, by=c("parentTconst"="parentTconst"))
+IMDbEpisodes=inner_join(data.frame("parentTconst" = c("tt0108778"), "titleType" = c("tvSeries"), "primaryTitle" = c("Friends")) ,dfepisode, by=c("parentTconst"="parentTconst"))
 
 # Get the rating for each episode
 
 IMDbRatings=left_join(IMDbEpisodes,dfratings, by=c("tconst"="tconst"))
 
-rm(dfratings,dfTitle, dfepisode)
+rm(dfratings, dfepisode)
 
 
 #Create key to join IMDb information with dialogues data base
@@ -364,15 +389,225 @@ For the Network analysis a special data structure is required. We established th
 
 ## **IV. Missing values**
 
+To search for missing values we look at the number of missing values per columns in **dialouges**.
+```{r echo=FALSE}
+colSums(is.na(dialogues))
+```
+
+There appear to be some missing values for line column. We will use **visna** from **extracats** library to see the pattern of missing values.
+
+```{r echo=FALSE}
+visna(dialogues)
+```
+
+This missing values are due to a different formats in the Git Hub page used for web scraping. For example, lines like "Paolo: (something in Italian)" render a NA line because the scraping code removes everything between parenthesis.
+
+We decided to fill those missing values with "". By doing so we will keep the register for those characters dialogue.
+
+```{r echo=FALSE}
+dialogues <- dialogues %>%
+  mutate(words = if_else(is.na(line) , 0, as.double(words))) %>%
+  mutate(line = if_else(is.na(line) ,"", line)) 
+```
 
 
 ## **V. Results**
 
 ### ***i) Labeling the main and secondary characters and its participation***
 
+
+
+* **Main characters participation**
+
+Friends is a TV show that tells the story of a group of six friends: **Monica**, **Rachel**, **Phoebe**, **Chandler**, **Ross** and **Joey**.
+Is one of these characters more important than others? We try to answer this question by looking at the number of lines for each of these main characters.
+
+```{r echo=FALSE}
+main_characters <- c("MONICA","RACHEL","PHOEBE","ROSS","CHANDLER","JOEY")
+
+dialogues %>%
+  filter(character %in% main_characters) %>%
+  ggplot(aes(fct_infreq(character))) +
+    geom_bar(fill="#0d1fe6") +
+    ggtitle("Main characters lines count") +
+    labs(x="character",y="lines count") +
+    theme_bw()
+```
+
+We can see that Rachel is the character with more lines and Phoebe is the character with less lines.
+Now we focus in the number of words instead of the number of lines.
+
+```{r echo=FALSE}
+dialogues %>%
+  filter(character %in% main_characters) %>%
+  group_by(character) %>%
+  summarise(words_count=sum(words)) %>%
+  ggplot(aes(x=reorder(character, -words_count),y=words_count)) +
+    geom_col(fill="#0d1fe6") +
+    ggtitle("Main characters words count") +
+    labs(x="character",y="words count") +
+    theme_bw()
+```
+
+Rachel and Ross are again the characters that speak the most and Phoebe the one with less words.
+We can see that Monica was number 3 for number lines but she is number 5 for number of words. This suggests that Monica's lines tend to be shorter.
+The opposite happens with Joey. He is number 5 for number of lines, but he is third for number of words. This suggests his lines tend to be longer.
+
+```{r echo=FALSE}
+dialogues %>%
+  filter(character %in% main_characters) %>%
+  group_by(character,episode_id) %>% 
+  summarise(lines_count=n()) %>%
+  ggplot(aes(x=lines_count,y=..density..)) +
+     geom_histogram(bins=40, color = "#0d1fe6", fill = "lightblue", boundary = 0) +
+     geom_density(color = "#bd02da") +
+     facet_wrap(~character) +
+     theme_bw()
+```
+
+By looking into lines per episode distribution we find the following:
+* Monica's distribution looks more narrow that the others. This indicates that there are few episodes in which Monica speaks a lot.
+* Chandler and Ross have large right tails, we infer that those characters have episodes in which they speak a lot.
+* Rachel and Ross have wider distributions.
+
 ### ***ii) Unraveling the character interactions ***
 
-### ***iii) Extracting the main topics***
+### ***iii) Topic modelling using LDA***
+
+For topic modelling we will use the package **textmineR**. We will try to find the topic for each episode. To do so we will create a document for each episode, so we have to group lines by episode_id.
+
+```{r echo=FALSE}
+dialogues_by_episode <- dialogues %>%
+  group_by(episode_id) %>% 
+  summarise(lines=trimws(paste(line, collapse = " ")))
+head(dialogues_by_episode)
+```
+
+Function CrateDtm creates a document term matrix. To do so we use a group of stopwords, words we don't want to use because they are used frequently in English language and do not give insightful information.
+
+```{r echo=FALSE}
+#create DTM
+set.seed(12345)
+dtm <- CreateDtm(dialogues_by_episode$lines, 
+                 doc_names = dialogues_by_episode$episode_id, 
+                 stopword_vec = c(stopwords::stopwords("en"), 
+                                  stopwords::stopwords(source = "smart"),
+                                  tolower(main_characters),
+                                  c("yeah","uh","ah","ya","umm","ow","hey","um","huh",
+                                    "uhm","gonna","wanna","ohh","ooh","mr","ahh","whoa",
+                                    "la","ha","ugh","woah")),
+                 ngram_window = c(1, 2))
+dtm <- dtm[,colSums(dtm) > 2]
+```
+
+We will use document term matrix to create a Term Document Frequency matrix that counts the number of times a term appears (term frequency) and the number of documents in which a term appears (document frequency).
+
+These are the main terms ordered by term frequency:
+
+```{r echo=FALSE }
+
+tf <- TermDocFreq(dtm = dtm)
+original_tf <- tf %>% select(term, term_freq,doc_freq)
+rownames(original_tf) <- 1:nrow(original_tf)
+head( original_tf[ order(original_tf$term_freq, decreasing=TRUE), ] )
+```
+
+Now we fit a Latent Dirichlet allocation model in which we will try to fit 15 topics into the collection of episodes. This will return to main matrices:
+
+* **theta**: Matrix with the probability of topic per document -> P(topic | document).
+* **phi**: Matrix with the probability of term per topic -> P(term | topic).
+
+```{r echo=FALSE}
+set.seed(12345)
+model <- FitLdaModel(dtm = dtm, 
+                     k = 15,
+                     iterations = 1000,
+                     burnin = 180,
+                     alpha = 0.1,
+                     beta = 0.05,
+                     optimize_alpha = TRUE,
+                     calc_likelihood = TRUE,
+                     calc_coherence = TRUE,
+                     calc_r2 = TRUE,
+                     cpus = 2) 
+
+print("Theta:")
+head(model$theta[,1:5])
+print("Phi:")
+head(model$phi[,1:5])
+```
+
+Now the 15 topics have been created. To know about the topics quality we look into the **topic coherence**, this is a measure of how associated are words in a topic.
+
+```{r echo=FALSE}
+summary(model$coherence)
+
+hist(model$coherence, 
+     col= "#0d1fe6", 
+     main = "Histogram of topic coherence")
+```
+
+We will use phi to get the top 5 terms per topic.
+
+```{r echo=FALSE}
+model$top_terms <- GetTopTerms(phi = model$phi, M = 5)
+t(model$top_terms)
+```
+
+The next step is to compute the topic prevalence using theta. Topic prevalence indicate the most frequent topics in the TV show.
+
+```{r echo=FALSE}
+model$prevalence <- colSums(model$theta) / sum(model$theta) * 100
+
+ggplot() +
+  geom_point(aes(x=model$prevalence,y=model$alpha), color = "#0d1fe6")+
+    ggtitle("Topic prevalence") +
+    labs(x="prevalence",y="alpha") +
+    theme_bw()
+
+```
+
+Finally, we get a summary for the complete LDA model.
+
+```{r echo=FALSE}
+
+model$summary <- data.frame(topic = rownames(model$phi),
+                            coherence = round(model$coherence, 3),
+                            prevalence = round(model$prevalence,3),
+                            top_terms = apply(model$top_terms, 2, function(x){
+                              paste(x, collapse = ", ")
+                            }),
+                            stringsAsFactors = FALSE)
+
+model$summary[ order(model$summary$prevalence, decreasing = TRUE) , ]
+```
+
+We can see that the most prevalent (frequent) topic has words like "good", "god","great", "time". This makes sense, this words are very frequent in the TV show and that is why they give very little information about the topic. That is why the coherence is 0.0.
+
+The other topics in the model have less prevalence but they are more coherent. If you are a fan of the show and if you read the list of top terms, we are sure you can remember episodes in which those terms were important.
+
+To find those important episodes we created a d3 tool. We wrote a csv file using theta in which, for each episode and topic we put the probability of that topic given the episode and the top terms of that topic.
+
+```{r echo=FALSE}
+assignments <- rownames_to_column(as.data.frame(t(model$theta)),var="rowID") %>%
+  gather(key="topic",value="value",-rowID) %>%
+  rename(topic2=topic) %>%
+  rename(rowID2=rowID) %>%
+  rename(topic=rowID2) %>%
+  rename(id=topic2) %>%
+  mutate(topic_num=  as.integer(substr(topic,3,1000000)) )
+
+assignments2 <- merge(x = assignments, y = model$summary[,c("topic","top_terms")], by = "topic", all.x = TRUE)
+assignments3 <- merge(x = assignments2, y = episodes_df[,c("id","name")], by = "id", all.x = TRUE)
+
+head(assignments3)
+write.csv(assignments3,"docs/topics_assignments.csv")
+```
+
+
+```{r echo=FALSE}
+htmltools::includeHTML("https://bernacho.github.io/EDAV_project/d3_lda.html")
+```
 
 ### ***iv) Rating contribution per character***
 
