@@ -56,6 +56,12 @@ library(GGally)
 library(htmltools)
 library(textmineR)
 library(ggthemes)
+library(ggrepel)
+library(cluster)
+library(igraph, quietly = TRUE, warn.conflicts = FALSE, verbose = FALSE)
+library(visNetwork)
+library(ggplot2)
+library(plotly)
 ```
 
 \
@@ -97,7 +103,7 @@ We have use the next R libraries for the development of this project :
 * For data extraction and manipulation: [`dplyr`](https://www.rdocumentation.org/packages/dplyr){target="_blank"}, [`rvest`](https://www.rdocumentation.org/packages/rvest/versions/0.3.5){target="_blank"}, [`robotstxt`](https://www.rdocumentation.org/packages/robotstxt/versions/0.6.2){target="_blank"},[`base`](https://www.rdocumentation.org/packages/base/versions/3.6.2){target="_blank"}, [`Hmisc`](https://www.rdocumentation.org/packages/Hmisc/versions/4.3-0){target="_blank"}
 
 
-* For data visualization: [`ggplot2`](https://www.rdocumentation.org/packages/ggplot2/versions/3.2.1){target="_blank"}, [`ggthemes`](https://www.rdocumentation.org/packages/ggthemes/versions/3.5.0){target="_blank"}, [`ggrepel`](https://www.rdocumentation.org/packages/ggrepel/versions/0.8.1){target="_blank"}, [`visNetwork`](https://www.rdocumentation.org/packages/visNetwork/versions/2.0.9){target="_blank"}, [`d3`](https://d3js.org/){target="_blank"}, [`shiny`](https://www.rdocumentation.org/packages/shiny/versions/1.4.0){target="_blank"}
+* For data visualization: [`ggplot2`](https://www.rdocumentation.org/packages/ggplot2/versions/3.2.1){target="_blank"}, [`ggthemes`](https://www.rdocumentation.org/packages/ggthemes/versions/3.5.0){target="_blank"}, [`ggrepel`](https://www.rdocumentation.org/packages/ggrepel/versions/0.8.1){target="_blank"}, [`visNetwork`](https://www.rdocumentation.org/packages/visNetwork/versions/2.0.9){target="_blank"}, [`d3`](https://d3js.org/){target="_blank"}
 
 * Furthermore, for run some of the analysis and visualizations we have used some Machine Learning (ML) techniques and other statistical tools such as: Kmeans analysis([`cluster`](https://www.rdocumentation.org/packages/cluster/versions/2.1.0){target="_blank"}), Graph and network analysis([`igraph`](https://www.rdocumentation.org/packages/igraph/versions/1.2.4.2){target="_blank"}), Topic analysis([`textmineR`](https://www.rdocumentation.org/packages/textmineR/versions/3.0.4){target="_blank"}, [`stopwords`](https://www.rdocumentation.org/packages/stopwords/versions/1.0){target="_blank"})
 
@@ -380,12 +386,6 @@ dialogues=inner_join(dialogues,IMDbRatings[,c(1,4,7,8,9)], by= c("episode_id"="e
 str(dialogues)
 ```
 
-### ***ii) Data structure for Network analysis***
-
-For the Network analysis a special data structure is required. We established the a defition of interaction between characters when they share scene. We must mention that the data estructure does not make possible to identify the exact interaction of the characters in the scene. Hence, we have made the assumption that all the characters that appeared in eavery scene interacted between them. Moreover, we have assumed that the interactions between the characters will be represented by a adjecency matrix where we can observe
-
-
-
 
 ## **IV. Missing values**
 
@@ -413,9 +413,69 @@ dialogues <- dialogues %>%
 
 ## **V. Results**
 
-### ***i) Labeling the main and secondary characters and its participation***
+### ***Labeling the main and secondary characters and its participation***
 
 
+* The first big question that we want to explore is the categorization by importance by the participation of the characters? As we have previously mentioned this question seems to be naive, however, if we assume that we do not have any previous knowledge of the sitcom and considering that over the ten seasons more than 800 characters appeared in the show, the analysis is far from being a naive exercise.
+
+To answer this question we have used the unsupervised Machine Learning technique of Kmean. Its objective s to label the data based on certain characteristics, in this case, we used the number of words, lines, and scenes. To accomplish this task we have used the libraries  [`cluster`](https://www.rdocumentation.org/packages/cluster/versions/2.1.0){target="_blank"}, and [`base`](https://www.rdocumentation.org/packages/base/versions/3.6.2){target="_blank"}. Moreover, we have established established a priori the desired number of labels tha we wanted for our data, for practicity terms we decides to set the size of the groups or kmeans.
+
+```{r include=FALSE}
+
+
+DF_Character_Episode=dialogues%>%
+  group_by(episode, season, scene, character, episode_id)%>%
+  summarise(num_lines= n(), totwords=sum(words,na.rm = T), avgRating=mean(averageRating,na.rm = T) )%>%
+  arrange(scene ,-num_lines, -totwords)%>%
+  group_by(character, episode, season, episode_id)%>%
+  summarise(Total_scene= n(), Total_lines=sum(num_lines,na.rm = T),Tot_words=sum(totwords,na.rm = T),Avg_Rating=mean(avgRating,na.rm = T) )%>%
+  arrange(-Total_scene ,-Total_lines, -Tot_words)
+
+DF_Character=dialogues%>%
+  group_by(episode, season, scene, character, episode_id)%>%
+  summarise(num_lines= n(), totwords=sum(words,na.rm = T))%>%
+  arrange(scene ,-num_lines, -totwords)%>%
+  group_by(character)%>%
+  summarise(Total_scene= n(), Total_lines=sum(num_lines,na.rm = T),Total_words=sum(totwords,na.rm = T))%>%
+  arrange(-Total_scene ,-Total_lines, -Total_words)
+
+
+set.seed(100)
+ClusterCharacter=kmeans(DF_Character[,2:4], 3, nstart = 100)
+vcluster=seq.int(1,3,1)
+Centers=arrange(data.frame(ClusterCharacter$centers, vcluster), -Total_scene, -Total_lines, -Total_words)
+DF_kmeans=cbind(DF_Character, as.data.frame(ClusterCharacter$cluster))
+colnames(DF_kmeans)[5]=c('Cluster')
+
+DF_kmeans=DF_kmeans%>%mutate(Group=ifelse(DF_kmeans$Cluster==Centers[1,4],"Main",ifelse(DF_kmeans$Cluster==Centers[2,4],"Secondary", "Others")))
+
+
+Gclusters1=filter(DF_kmeans, Cluster== Centers[1,4] | Cluster== Centers[2,4] )%>%
+  ggplot(aes(Total_scene, Total_lines, color=factor(Group), label= character)) +geom_point(alpha=0.7, stroke=0.5, size=3)+
+  geom_text_repel(size=3)+
+  scale_x_log10() +
+  scale_y_log10()
+
+x=filter(DF_kmeans, Cluster== Centers[1,4] | Cluster== Centers[2,4] )
+
+```
+
+From the kmean analysis obtain the following separation of characters:
+  + *Main Characters*: As expected Rachel, Monica, Phoebe, Joey, Chandler and Ross constitue one group tha has that on average has 1,680 scenes, 8469 lines and 	87,498 words.
+  + *Secondary Characters*: This group is composed by 33 characters, most of them are recurrent characters and guest stars. The average character in this group has on average 35 scenes, 133 lines and 	1,228 words.
+
+  + *Other Characters*: composed for those characters that are incidental or did not have a relevant importance in the sitcom. The average character in this group has 2 scenes, 7 lines and 64 words.
+
+Centers:
+
+```{r echo=FALSE}
+Centers
+```
+
+
+```{r echo=FALSE}
+ggplotly(Gclusters1)
+```
 
 * **Main characters participation**
 
@@ -470,9 +530,113 @@ By looking into lines per episode distribution we find the following:
 * Chandler and Ross have large right tails, we infer that those characters have episodes in which they speak a lot.
 * Rachel and Ross have wider distributions.
 
-### ***ii) Unraveling the character interactions ***
+### ***Unraveling the character interactions ***
 
-### ***iii) Topic modelling using LDA***
+
+For the Network analysis, a special data structure is required. We established a definition of interaction between characters when they share the same scene. We must mention that the original data structure of the dialogues does not permit us to identify the exact interaction of the characters in the scene. Hence, we have assumed that all the characters that appeared in every scene interacted between them. Moreover, we have assumed that the interactions between the characters will be represented by an adjacency matrix where we can observe the number of interactions that each character has with the others.
+
+With the library [`igraph`](https://www.rdocumentation.org/packages/igraph/versions/1.2.4.2){target="_blank"}) we were able to create the adjecency matrix of the characters and quantify the interactions among the 869 characters.
+
+
+
+```{r include=FALSE}
+
+
+num_episode=as.data.frame(dialogues$episode_id[!duplicated(dialogues$episode_id)])
+colnames(num_episode)[1]=c('episode_id')
+Interaction=data.frame(from=character(), to=character(), episode=character(), scene=numeric(), stringsAsFactors=TRUE)
+
+
+for (i in 1:nrow(num_episode))
+{
+
+  BD_episode=filter(dialogues,dialogues$episode_id==num_episode[i,])
+
+  num_scene=as.data.frame(BD_episode$scene[!duplicated(BD_episode$scene)])
+
+  colnames(num_scene)[1]=c('scene')
+
+  for (j in 1:nrow(num_scene))
+  {
+
+    BD_scene=filter(BD_episode,BD_episode$scene==num_scene[j,])
+
+    num_character=as.data.frame(BD_scene$character[!duplicated(BD_scene$character)])
+
+    colnames(num_character)[1]=c('character')
+
+    from=num_character %>% slice(rep(1:n(), each = n()))
+
+    to=do.call("rbind", replicate(nrow(num_character), num_character, simplify = FALSE))
+
+    episode_i=do.call("rbind", replicate(nrow(to), as.character(num_episode[i,]), simplify = FALSE))
+
+    scene_i=do.call("rbind", replicate(nrow(to), num_scene[j,], simplify = FALSE))
+
+    Interaction_i=data.frame(from, to, episode_i, scene_i )
+
+    colnames(Interaction_i)=c('from','to','episode', 'scene')
+
+    Interaction_i=subset(Interaction_i, from!=to)
+
+    Interaction=rbind(Interaction,Interaction_i)
+
+  }
+
+  rm(Interaction_i,scene_i,episode_i,from, to, num_character, num_scene, BD_episode, BD_scene)
+
+}
+
+###
+
+G_Inter=graph_from_data_frame(Interaction, directed = FALSE, vertices = NULL)
+
+Mat_Inter=as_adjacency_matrix(G_Inter, sparse=FALSE)
+
+Mat_Inter=Mat_Inter/2
+
+Mat_main=Mat_Inter[x[,1],x[,1]]
+
+G_Inter_main=graph_from_adjacency_matrix(Mat_main, mode='undirected', weighted = TRUE)
+
+
+```
+
+Interactivity Networks
+
+
+```{r include=FALSE}
+
+
+data=toVisNetworkData(G_Inter_main)
+
+nodes = inner_join(data$nodes,DF_kmeans[,c(1,5,6)], by=c("id"="character"))
+colnames(nodes)[c(4)]=c('group')
+
+edges=data$edges
+edges$value=edges$weight
+
+GNet=visNetwork(nodes, edges, height = "1000px", width="1000px") %>%
+  visIgraphLayout(layout = "layout_in_circle")%>%
+  visNodes(size = 10) %>%
+  visOptions(selectedBy = "group",
+             highlightNearest = list(enabled = TRUE, algorithm = "hierarchical", degree = 1),
+             nodesIdSelection = TRUE)%>%
+  visInteraction(hideEdgesOnDrag = TRUE)%>%
+  visEdges(color = list(highlight = "blue", hover = "red"))%>%
+  visGroups(groupname = "Main", color = "red", shape = "square",
+            shadow = list(enabled = TRUE))%>%
+  visGroups(groupname = "Secondary", color = "blue", shape = "dot")
+
+```
+
+
+
+```{r echo=FALSE}
+GNet
+```
+
+### ***Topic modelling using LDA***
 
 For topic modelling we will use the package **textmineR**. We will try to find the topic for each episode. To do so we will create a document for each episode, so we have to group lines by episode_id.
 
@@ -495,7 +659,7 @@ dtm <- CreateDtm(dialogues_by_episode$lines,
                                   tolower(main_characters),
                                   c("yeah","uh","ah","ya","umm","ow","hey","um","huh",
                                     "uhm","gonna","wanna","ohh","ooh","mr","ahh","whoa",
-                                    "la","ha","ugh","woah")),
+                                    "la","ha","ugh","woah","alright")),
                  ngram_window = c(1, 2))
 dtm <- dtm[,colSums(dtm) > 2]
 ```
@@ -530,7 +694,7 @@ Now we fit a Latent Dirichlet allocation model in which we will try to fit 15 to
 #                      calc_coherence = TRUE,
 #                      calc_r2 = TRUE,
 #                      cpus = 2)
-# 
+#
 # print("Theta:")
 # head(model$theta[,1:5])
 # print("Phi:")
@@ -541,7 +705,7 @@ Now the 15 topics have been created. To know about the topics quality we look in
 
 ```{r echo=FALSE}
 # summary(model$coherence)
-# 
+#
 # hist(model$coherence,
 #      col= "#0d1fe6",
 #      main = "Histogram of topic coherence")
@@ -558,7 +722,7 @@ The next step is to compute the topic prevalence using theta. Topic prevalence i
 
 ```{r echo=FALSE}
 # model$prevalence <- colSums(model$theta) / sum(model$theta) * 100
-# 
+#
 # ggplot() +
 #   geom_point(aes(x=model$prevalence,y=model$alpha), color = "#0d1fe6")+
 #     ggtitle("Topic prevalence") +
@@ -578,7 +742,7 @@ Finally, we get a summary for the complete LDA model.
 #                               paste(x, collapse = ", ")
 #                             }),
 #                             stringsAsFactors = FALSE)
-# 
+#
 # model$summary[ order(model$summary$prevalence, decreasing = TRUE) , ]
 ```
 
@@ -596,20 +760,20 @@ To find those important episodes we created a d3 tool. We wrote a csv file using
 #   rename(topic=rowID2) %>%
 #   rename(id=topic2) %>%
 #   mutate(topic_num=  as.integer(substr(topic,3,1000000)) )
-# 
+#
 # assignments2 <- merge(x = assignments, y = model$summary[,c("topic","top_terms")], by = "topic", all.x = TRUE)
 # assignments3 <- merge(x = assignments2, y = episodes_df[,c("id","name")], by = "id", all.x = TRUE)
-# 
+#
 # head(assignments3)
 # write.csv(assignments3,"docs/topics_assignments.csv")
 ```
 
 
 ```{r echo=FALSE}
-htmltools::includeHTML("https://bernacho.github.io/EDAV_project/d3_lda.html")
+htmltools::includeHTML("./docs/d3_lda.html")
 ```
 
-### ***iv) Features driving the rating***
+### ***Features driving the rating***
 
 To look for the main features that drive the rating up or down, it is useful to start by observing its tempral structure. The following graph is **interactive**:
 
@@ -644,16 +808,16 @@ episode <- dfepisode %>%
   left_join(dfratings, by = 'tconst') %>%
   arrange(as.numeric(as.character(seasonNumber)), as.numeric(as.character(episodeNumber)))
 
-ggplot(episode, aes(x=factor(episodeNumber, levels = 1:25), averageRating)) + 
-  geom_boxplot() + 
+ggplot(episode, aes(x=factor(episodeNumber, levels = 1:25), averageRating)) +
+  geom_boxplot() +
   labs(title = 'Average Ratings') +
-  xlab('Episode') + 
-  ylab('Rating') + 
+  xlab('Episode') +
+  ylab('Rating') +
   theme_clean()
 ```
 
  The boxplots not only help to confirm in a cleaner graph the behaviour observed previously, but also provides additional insigths like:
- 
+
   - The perceived quality (in terms of rating) of episodes 7 to 9 varies a lot from season to season.
   - The 10th episode for all season has low rating surrounding 8.2. These were traditionally aired through the holidays season in December.
   - Two highest ratings:
@@ -665,7 +829,7 @@ ggplot(episode, aes(x=factor(episodeNumber, levels = 1:25), averageRating)) +
 
 A likely explanation for the behaviour on the last 7 episodes of all seasons is that writers may have prepared some intricated plot (an not necessarily amusing) to be climaxed on the lasts episodes.
 
-A feature interesting to explore y how the number of viewers and voters relate with the Average Rating. 
+A feature interesting to explore y how the number of viewers and voters relate with the Average Rating.
 ```{r echo=FALSE}
 # Main and secondary characters
 load("./data/DF_kmeans.RData")
@@ -681,9 +845,9 @@ characters_sec <- DF_kmeans %>%
 
 # load additional episode detail: dates and viewers
 episode_xtra <- read_csv('data/episode_extras.csv')
-episode_xtra <- episode %>% left_join(episode_xtra, by='key') 
-# viewers trend (boxplot) 
-ggpairs(episode_xtra, c(6,7,11)) 
+episode_xtra <- episode %>% left_join(episode_xtra, by='key')
+# viewers trend (boxplot)
+ggpairs(episode_xtra, c(6,7,11))
 ```
 
 The scatterplot matrix above helps to see that the better the episode is, the likelier that people will invest their time to rate it. Specifically this happens with an exponential relationship. In contrast, the the number of viewers show a small positive linear correlation.
@@ -695,24 +859,24 @@ The following boxplot graph shows that the hype for the show and the [main actor
 Clearly, the most successfull season, when the actors were paid in the range from \$20,000 to \$40,000 per episode, was season 2 with about 50% (approx) more viewers than Season 10 when they were paid \$1 million per episode.
 
 ```{r echo=FALSE}
-ggplot(episode_xtra %>% filter(viewers<50), aes(seasonNumber, viewers)) + 
-  geom_boxplot() + 
+ggplot(episode_xtra %>% filter(viewers<50), aes(seasonNumber, viewers)) +
+  geom_boxplot() +
   labs(title = 'Number of viewers (in millions)') +
-  xlab('Season') + 
-  ylab('Viewers') + 
+  xlab('Season') +
+  ylab('Viewers') +
   theme_clean()
 ```
 
-Continuing with the numnber of viewers. When the last episode of a season is considered a good one, it is expected that people will watch the begining of the next one and then loose stamina (until the last episodes of the curren season). 
+Continuing with the numnber of viewers. When the last episode of a season is considered a good one, it is expected that people will watch the begining of the next one and then loose stamina (until the last episodes of the curren season).
 
 An additional insight: episodes 19-22 usually were aired around ____________, which explains the low number of fans watching. Here the graph.
 
 ```{r echo=FALSE}
-ggplot(episode_xtra %>% filter(viewers<50), aes(factor(episodeNumber), viewers)) + 
-    geom_boxplot() + 
+ggplot(episode_xtra %>% filter(viewers<50), aes(factor(episodeNumber), viewers)) +
+    geom_boxplot() +
   labs(title = 'Number of viewers (in millions)') +
-  xlab('Episode') + 
-  ylab('Viewers') + 
+  xlab('Episode') +
+  ylab('Viewers') +
   theme_clean()
 ```
 
@@ -721,11 +885,11 @@ Probably the most ubiquitous discussion among Friends fans is which of the main 
 ```{r echo=FALSE}
 # filter line counts by character
 load('./data/DF_Character_Episode.RData')
-lines_main <- DF_Character_Episode %>% 
+lines_main <- DF_Character_Episode %>%
   filter(character %in% characters_main$character)
 
-aggregate_main <- lines_main %>% 
-  spread(character, Total_lines, fill=0) %>% 
+aggregate_main <- lines_main %>%
+  spread(character, Total_lines, fill=0) %>%
   group_by(episode_id, Avg_Rating) %>%
   summarise(CHANDLER = sum(CHANDLER),
             JOEY = sum(JOEY),
@@ -733,7 +897,7 @@ aggregate_main <- lines_main %>%
             PHOEBE = sum(PHOEBE),
             RACHEL = sum(RACHEL),
             ROSS = sum(ROSS))
-aggregate_main %>% ggpairs(2:8, ) 
+aggregate_main %>% ggpairs(2:8, )
 ```
 
 There is no surprise that Monica and Chandler are the characters with most interactions between them since they were a couple for a longer time than Ross and Rachel (second place).
@@ -764,9 +928,17 @@ kable(p_values, caption = 'p-values')
 
 ## **VI. Interactive component**
 
-### ***i) D3***
+We included four elements that are interactive:
 
-### ***ii) Shiny***
-<!--  -->
+* **Inraction network** using VisNetwork.
+* **Bar plot for topics per episode** using d3.
+* **Rating timeseries per season** using d3.
+
 
 ## **VII. Conclusion**
+
+* Rachel and Ross are the characters with most lines, this suggests that most of the stories go arround them.
+* Using K-means we could find 3 clear groups of characters, that match with the roles that the character play in the TV show.
+* Using VisNetwork we could build a tool that allows the user to explore the interaction between characters, depending on characters that shared scenes.
+* The most frequent terms found in the topic modelling tell us that Friends is a TV show with a very simple language. Words like "Good", "Great", "alright" and "guys" are arround the most common.
+* Topic modelling results are not clear, but we do can tag some episodes in four categories "weddings", "baby-doctor", "party-thanksgiving" and "work".
