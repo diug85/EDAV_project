@@ -92,7 +92,7 @@ As teenagers at the beginning of the century, we were heavily influenced by the 
 
 * Can we identify and quantify the interactions between the main and secondary characters? What would be an appropriate way to quantify and visualize these relationships?
 
-* Which are the most recurrent topics through the seasons and episodes of the show? And how the thematic of the show evolved over its ten seasons? Can we extract this information through the dialogues of the show?
+* Which are the most recurrent topics through the seasons and episodes of the show? And how the thematic of the show evolved over its ten seasons? Can we extract this information from the dialogues of the show?
 
 * Can we determine the contribution of each character to the popularity of the sitcom? Does the participation of each character influence the viewer's preferences?
 
@@ -103,7 +103,7 @@ We have use the next R libraries for the development of this project :
 * For data extraction and manipulation: [`dplyr`](https://www.rdocumentation.org/packages/dplyr){target="_blank"}, [`rvest`](https://www.rdocumentation.org/packages/rvest/versions/0.3.5){target="_blank"}, [`robotstxt`](https://www.rdocumentation.org/packages/robotstxt/versions/0.6.2){target="_blank"},[`base`](https://www.rdocumentation.org/packages/base/versions/3.6.2){target="_blank"}, [`Hmisc`](https://www.rdocumentation.org/packages/Hmisc/versions/4.3-0){target="_blank"}
 
 
-* For data visualization: [`ggplot2`](https://www.rdocumentation.org/packages/ggplot2/versions/3.2.1){target="_blank"}, [`ggthemes`](https://www.rdocumentation.org/packages/ggthemes/versions/3.5.0){target="_blank"}, [`ggrepel`](https://www.rdocumentation.org/packages/ggrepel/versions/0.8.1){target="_blank"}, [`visNetwork`](https://www.rdocumentation.org/packages/visNetwork/versions/2.0.9){target="_blank"}, [`d3`](https://d3js.org/){target="_blank"}
+* For data visualization: [`ggplot2`](https://www.rdocumentation.org/packages/ggplot2/versions/3.2.1){target="_blank"}, [`ggthemes`](https://www.rdocumentation.org/packages/ggthemes/versions/3.5.0){target="_blank"}, [`ggrepel`](https://www.rdocumentation.org/packages/ggrepel/versions/0.8.1){target="_blank"}, [`visNetwork`](https://www.rdocumentation.org/packages/visNetwork/versions/2.0.9){target="_blank"}, [`d3`](https://d3js.org/){target="_blank"}, ['knitr](https://www.rdocumentation.org/packages/knitr/versions/1.26){target="_blank"}
 
 * Furthermore, for run some of the analysis and visualizations we have used some Machine Learning (ML) techniques and other statistical tools such as: Kmeans analysis([`cluster`](https://www.rdocumentation.org/packages/cluster/versions/2.1.0){target="_blank"}), Graph and network analysis([`igraph`](https://www.rdocumentation.org/packages/igraph/versions/1.2.4.2){target="_blank"}), Topic analysis([`textmineR`](https://www.rdocumentation.org/packages/textmineR/versions/3.0.4){target="_blank"}, [`stopwords`](https://www.rdocumentation.org/packages/stopwords/versions/1.0){target="_blank"})
 
@@ -114,18 +114,18 @@ We have use the next R libraries for the development of this project :
 
 The primary data sources that we used for our project and that we consider that have an adequate quality are:
 
-   * Transcripts: For the transcripts, we used an open resource built by fans of the sitcom and that has been compiled in a Github repository. The repository contains all the dialogues of the characters for the 231 episodes of the tv-show. The data is organized in Html documents.. The data can be accessed via: https://fangj.github.io/friends/. If you want to see how de transcripts are originally presented [please click here](https://fangj.github.io/friends/season/0101.html).
+   * Transcripts: For the transcripts, we used an open resource built by fans of the sitcom that has been compiled in a Github repository. The repository contains all the dialogues of the characters for the 231 episodes of the tv-show. The data is organized in Html documents.. The data can be accessed via: https://fangj.github.io/friends/. If you want to see how de transcripts are originally presented [please click here](https://fangj.github.io/friends/season/0101.html).
 
-   * Ratings: For the ratings, we have used the IMDb Datasets which is available for access to customers for personal and non-commercial use.  The data is structured in seven compressed CSV files that contain general information of the show (genre, start year, end year, episode duration, etc.), and specific information of each episode (title, rating, characters, crew, etc.). A relevant characteristic of the database is that it is refreshed daily. We have made the consultation of the Data on November 10, 20199. The data can be accessed via: https://datasets.imdbws.com/
+   * Ratings: For the ratings, we have used the IMDb Datasets which are available for access to customers for personal and non-commercial use.  The data is structured in seven compressed CSV files that contain general information of the show (genre, start year, end year, episode duration, etc.), and specific information of each episode (title, rating, characters, crew, etc.). A relevant characteristic of the database is that it is refreshed daily. We have made the consultation of the Data on November 10, 2019. The datasets can be accessed via: https://datasets.imdbws.com/
 
 
 ### ***ii) Data quality and challenges***
 
    * IMDb Dataset:
 
-      + The first obstacle that we faced with the IMDb datasets was the size of the data sets, some of them have millions of rows with the information of Tv-series, shorts, movies, documentaries, and other entertainment formats. It was impossible to store them in our Github.
+      + The first obstacle that we faced with the IMDb datasets was the size of the datasets, some with millions of rows with information of TV shows, shorts, movies, documentaries, and other entertainment formats. Due to their size, it was not possible to store them in Github.
 
-      + The second obstacle was to track, which was the data corresponding to our case of study. For example, we searched in the dataset only by name 'Friends' we found 178 results of TV-series or movies called 'Friends'. It was necessary to understand and do some research on the years of beginning and end of the series to refine the search.
+      + The second obstacle was to identify the data corresponding to our case of study. For example, we searched in the dataset only by name 'Friends' and we found 178 results of TV shows and movies called 'Friends'. It was necessary to understand and do some research on the years of beginning and end of the series to refine the search.
 
       +  Another obstacle was that the ID for TV-series across the seven IMDb datasets was not uniform. For example, in the dataset corresponding to the titles of the TV-series, the ID to identify the show is named "tconst", while on the dataset that where we can get the ID of the episode the name correspond to the ID of the episode, and the ID for the TV-series is called "parentTconst". These errors were identified through the exploration of the datasets.
 
@@ -133,7 +133,7 @@ The primary data sources that we used for our project and that we consider that 
 
       +  The main obstacle of the dialogue dataset is that not all the HTML files share the same format. We have overcome this difficulty by incorporating special cases in our scraping code that took into account the special cases that we have detected.
 
-      + The second difficulty that we have experienced in the dialogue dataset is the cleaning of the dialogues itself. We tried to standardize as most as possible the content of the dialogues, by identifying different names for the same character, common typos and regular expressions that could hinder our analysis.
+      + The second difficulty that we have experienced in the dialogue dataset is the cleaning of the dialogues. We tried to standardize as much as possible the content of the dialogues, by identifying different names for the same character, common typos and regular expressions that could hinder our analysis.
 
     You can follow the scraping code that lead to the folowing data frame by looking into "frieds.Rmd" file in the Git Hub repository.
 
@@ -234,7 +234,6 @@ for (i in 1:nrow(df)) {
   n <- read_dialogues(df[i,"link"],df[i,"id"])
   dialogues <- rbind(dialogues, n)
 }
-head(dialogues)
 ```
 
 ```{r echo=FALSE}
@@ -266,7 +265,7 @@ We can see that some episodes where put together in the same file:
  unique(filter(dialogues, grepl("-",episode_id))$episode_id)
 ```
 
-Now we split those episodes into two different ones:
+We split those episodes into two different ones and for more clarity, added season and episode columns.
 
 ```{r echo=FALSE}
 dialogues <- dialogues %>%
@@ -290,8 +289,6 @@ episodes_df <- rbind(episodes_df,c("","","9","24","In Barbados (part 2)","9 : 24
 episodes_df <- rbind(episodes_df,c("","","10","17","The Last One","10 : 17"))
 ```
 
-For more clarity, we will add season and episode columns.
-
 ```{r echo=FALSE}
 dialogues <- dialogues %>%
   mutate(season =  trimws(str_extract(episode_id,".+\\:"))) %>%
@@ -302,7 +299,7 @@ dialogues <- dialogues %>%
   mutate(episode = as.integer(trimws(str_sub(episode, start=2))))
 ```
 
-Now we have to correct some character names that had typos and we removed some lines that the scraping code catched that are not dialogues.
+Then we had to correct some character names that had typos and we removed some lines that the scraping code catched that are not dialogues.
 
 ```{r echo=FALSE}
 dialogues <- dialogues %>%
@@ -331,10 +328,10 @@ dialogues <- filter(dialogues, dialogues$character!="TELEPLAY BY" &
 head(dialogues)
 ```
 
-More data transformation will be used and explained in each of the Results subsections.
+More data transformation were used and explained in each of the Results subsections.
 
 
-      + Step 1.2: Extract, decompress and save as dataframes. Tha 3 tables of IMDb that we have used in our analysis are those that allowed us to extract the information related to the rating of each episode.
+Step 1.2: We extracted, decompressed and saved as dataframes. The 3 tables from IMDb that we have used in our analysis are those that allowed us to extract the information related to the rating of each episode.
 
 ```{r include=FALSE}
 load(file = "data/dfratings.RData")
@@ -389,7 +386,7 @@ str(dialogues)
 
 ## **IV. Missing values**
 
-To search for missing values we look at the number of missing values per columns in **dialouges**.
+To search for missing values we look at the number of missing values per columns in **dialoges**.
 ```{r echo=FALSE}
 colSums(is.na(dialogues))
 ```
@@ -461,10 +458,10 @@ x=filter(DF_kmeans, Cluster== Centers[1,4] | Cluster== Centers[2,4] )
 ```
 
 From the kmean analysis obtain the following separation of characters:
-  + *Main Characters*: As expected Rachel, Monica, Phoebe, Joey, Chandler and Ross constitue one group tha has that on average has 1,680 scenes, 8469 lines and 	87,498 words.
-  + *Secondary Characters*: This group is composed by 33 characters, most of them are recurrent characters and guest stars. The average character in this group has on average 35 scenes, 133 lines and 	1,228 words.
+* *Main Characters*: As expected Rachel, Monica, Phoebe, Joey, Chandler and Ross constitue one group tha has that on average has 1,680 scenes, 8469 lines and 	87,498 words.
+* *Secondary Characters*: This group is composed by 33 characters, most of them are recurrent characters and guest stars. The average character in this group has on average 35 scenes, 133 lines and 	1,228 words.
 
-  + *Other Characters*: composed for those characters that are incidental or did not have a relevant importance in the sitcom. The average character in this group has 2 scenes, 7 lines and 64 words.
+* *Other Characters*: composed for those characters that are incidental or did not have a relevant importance in the sitcom. The average character in this group has 2 scenes, 7 lines and 64 words.
 
 Centers:
 
@@ -682,52 +679,52 @@ Now we fit a Latent Dirichlet allocation model in which we will try to fit 15 to
 * **phi**: Matrix with the probability of term per topic -> P(term | topic).
 
 ```{r echo=FALSE}
-# set.seed(12345)
-# model <- FitLdaModel(dtm = dtm,
-#                      k = 15,
-#                      iterations = 1000,
-#                      burnin = 180,
-#                      alpha = 0.1,
-#                      beta = 0.05,
-#                      optimize_alpha = TRUE,
-#                      calc_likelihood = TRUE,
-#                      calc_coherence = TRUE,
-#                      calc_r2 = TRUE,
-#                      cpus = 2)
-#
-# print("Theta:")
-# head(model$theta[,1:5])
-# print("Phi:")
-# head(model$phi[,1:5])
+set.seed(12345)
+model <- FitLdaModel(dtm = dtm,
+                     k = 15,
+                     iterations = 1000,
+                     burnin = 180,
+                     alpha = 0.1,
+                     beta = 0.05,
+                     optimize_alpha = TRUE,
+                     calc_likelihood = TRUE,
+                     calc_coherence = TRUE,
+                     calc_r2 = TRUE,
+                     cpus = 2)
+
+print("Theta:")
+head(model$theta[,1:5])
+print("Phi:")
+head(model$phi[,1:5])
 ```
 
 Now the 15 topics have been created. To know about the topics quality we look into the **topic coherence**, this is a measure of how associated are words in a topic.
 
 ```{r echo=FALSE}
-# summary(model$coherence)
-#
-# hist(model$coherence,
-#      col= "#0d1fe6",
-#      main = "Histogram of topic coherence")
+summary(model$coherence)
+
+hist(model$coherence,
+     col= "#0d1fe6",
+     main = "Histogram of topic coherence")
 ```
 
 We will use phi to get the top 5 terms per topic.
 
 ```{r echo=FALSE}
-# model$top_terms <- GetTopTerms(phi = model$phi, M = 5)
-# t(model$top_terms)
+model$top_terms <- GetTopTerms(phi = model$phi, M = 5)
+t(model$top_terms)
 ```
 
 The next step is to compute the topic prevalence using theta. Topic prevalence indicate the most frequent topics in the TV show.
 
 ```{r echo=FALSE}
-# model$prevalence <- colSums(model$theta) / sum(model$theta) * 100
-#
-# ggplot() +
-#   geom_point(aes(x=model$prevalence,y=model$alpha), color = "#0d1fe6")+
-#     ggtitle("Topic prevalence") +
-#     labs(x="prevalence",y="alpha") +
-#     theme_clean()
+model$prevalence <- colSums(model$theta) / sum(model$theta) * 100
+
+ggplot() +
+  geom_point(aes(x=model$prevalence,y=model$alpha), color = "#0d1fe6")+
+    ggtitle("Topic prevalence") +
+    labs(x="prevalence",y="alpha") +
+    theme_clean()
 
 ```
 
@@ -735,15 +732,15 @@ Finally, we get a summary for the complete LDA model.
 
 ```{r echo=FALSE}
 
-# model$summary <- data.frame(topic = rownames(model$phi),
-#                             coherence = round(model$coherence, 3),
-#                             prevalence = round(model$prevalence,3),
-#                             top_terms = apply(model$top_terms, 2, function(x){
-#                               paste(x, collapse = ", ")
-#                             }),
-#                             stringsAsFactors = FALSE)
-#
-# model$summary[ order(model$summary$prevalence, decreasing = TRUE) , ]
+model$summary <- data.frame(topic = rownames(model$phi),
+                            coherence = round(model$coherence, 3),
+                            prevalence = round(model$prevalence,3),
+                            top_terms = apply(model$top_terms, 2, function(x){
+                              paste(x, collapse = ", ")
+                            }),
+                            stringsAsFactors = FALSE)
+
+model$summary[ order(model$summary$prevalence, decreasing = TRUE) , ]
 ```
 
 We can see that the most prevalent (frequent) topic has words like "good", "god","great", "time". This makes sense, this words are very frequent in the TV show and that is why they give very little information about the topic. That is why the coherence is 0.0.
@@ -753,19 +750,19 @@ The other topics in the model have less prevalence but they are more coherent. I
 To find those important episodes we created a d3 tool. We wrote a csv file using theta in which, for each episode and topic we put the probability of that topic given the episode and the top terms of that topic.
 
 ```{r echo=FALSE}
-# assignments <- rownames_to_column(as.data.frame(t(model$theta)),var="rowID") %>%
-#   gather(key="topic",value="value",-rowID) %>%
-#   rename(topic2=topic) %>%
-#   rename(rowID2=rowID) %>%
-#   rename(topic=rowID2) %>%
-#   rename(id=topic2) %>%
-#   mutate(topic_num=  as.integer(substr(topic,3,1000000)) )
-#
-# assignments2 <- merge(x = assignments, y = model$summary[,c("topic","top_terms")], by = "topic", all.x = TRUE)
-# assignments3 <- merge(x = assignments2, y = episodes_df[,c("id","name")], by = "id", all.x = TRUE)
-#
-# head(assignments3)
-# write.csv(assignments3,"docs/topics_assignments.csv")
+assignments <- rownames_to_column(as.data.frame(t(model$theta)),var="rowID") %>%
+  gather(key="topic",value="value",-rowID) %>%
+  rename(topic2=topic) %>%
+  rename(rowID2=rowID) %>%
+  rename(topic=rowID2) %>%
+  rename(id=topic2) %>%
+  mutate(topic_num=  as.integer(substr(topic,3,1000000)) )
+
+assignments2 <- merge(x = assignments, y = model$summary[,c("topic","top_terms")], by = "topic", all.x = TRUE)
+assignments3 <- merge(x = assignments2, y = episodes_df[,c("id","name")], by = "id", all.x = TRUE)
+
+head(assignments3)
+write.csv(assignments3,"docs/topics_assignments.csv")
 ```
 
 
@@ -795,7 +792,6 @@ load('./data/dfepisode.RData')
 load('./data/dfratings.RData')
 
 key <- function(season, episode){
-  # s <- toString(season)
   e <- str_pad(episode, 2, 'left', 0)
   paste(season, e, sep=' : ')
 }
@@ -884,7 +880,7 @@ Probably the most ubiquitous discussion among Friends fans is which of the main 
 
 ```{r echo=FALSE}
 # filter line counts by character
-load('./data/DF_Character_Episode.RData')
+# load('./data/DF_Character_Episode.RData')
 lines_main <- DF_Character_Episode %>%
   filter(character %in% characters_main$character)
 
@@ -904,7 +900,7 @@ There is no surprise that Monica and Chandler are the characters with most inter
 
 As to the rating, we can see that individual participations don't hold a high correlation with the rating of an episode. However, we should notice that all of them are positive and that Ross is the characther with the highest one, which aligns with the previous analysis of interactions.
 
-To test how statistically significant are these results we ran correlation hypothesis tests. In consideration that the relation will not necessarily linear we decided to run both parametric (Pearson) and not-parametric (Spearman) hypothesis test for $H_0=\rho\let0$ vs $H_1=\rho>0$ that resulted in the following *p-values*:
+To test how statistically significant are these results we ran correlation hypothesis tests. In consideration that the relation will not necessarily linear and that there are many ties in rating (due to rounding) we decided to run both parametric (Pearson) and not-parametric (Spearman) hypothesis test for $H_0: \rho \leq 0$ vs $H_1:\rho>0$ that resulted in the following *p-values*:
 
 ```{r echo=FALSE}
 test_matrix <- function(data){
@@ -920,11 +916,13 @@ test_matrix <- function(data){
   df
 }
 p_values <-test_matrix(aggregate_main)
+```
+```{r echo=FALSE, results='asis'}
 library(knitr)
 kable(p_values, caption = 'p-values')
 ```
 
-- Ross
+**Ross seems to be the most relevant character given the number of lines and scenes in which he participates, that he has the highest correlation with the rating and that the significantly greater than cero under both hypothesis tests.**
 
 ## **VI. Interactive component**
 
