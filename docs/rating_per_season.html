@@ -97,9 +97,9 @@
               .style("font-size", 15)
             .on("click", function(d){
               // is the element currently visible ?
-              currentOpacity = d3.selectAll("." + d.name).style("opacity")
-              currentStroke = d3.selectAll("." + d.name).attr("stroke")
-              currentWidth = d3.selectAll("." + d.name).style("stroke-width")
+              currentOpacity = svg.selectAll("." + d.name).style("opacity")
+              currentStroke = svg.selectAll("." + d.name).attr("stroke")
+              currentWidth = svg.selectAll("." + d.name).style("stroke-width")
               
               // Change the opacity: from 0 to 1 or from 1 to 0
               d3.selectAll("." + d.name)
